@@ -1,0 +1,31 @@
+# ModernTUI CMake Configuration File
+
+set(TUI_VERSION "@PROJECT_VERSION@")
+
+# Find dependencies
+find_package(Threads REQUIRED)
+
+# Import targets
+if(NOT TARGET tui::tui)
+    include("${CMAKE_CURRENT_LIST_DIR}/tui-targets.cmake")
+endif()
+
+# Set variables for compatibility
+set(TUI_LIBRARIES tui::tui)
+set(TUI_INCLUDE_DIRS "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_INCLUDEDIR@/tui")
+set(TUI_FOUND TRUE)
+
+# Check for ASM optimization support
+if(@ENABLE_ASM_OPTIMIZATIONS@)
+    set(TUI_ASM_OPTIMIZATIONS TRUE)
+else()
+    set(TUI_ASM_OPTIMIZATIONS FALSE)
+endif()
+
+# Provide information about the installation
+message(STATUS "Found ModernTUI: ${TUI_VERSION}")
+if(TUI_ASM_OPTIMIZATIONS)
+    message(STATUS "  ASM optimizations: enabled")
+else()
+    message(STATUS "  ASM optimizations: disabled")
+endif()
