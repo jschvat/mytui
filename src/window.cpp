@@ -75,9 +75,9 @@ void Window::draw(UnicodeBuffer& buffer) {
     buffer.setCell(x + w - 3, y, Unicode::FULL_BLOCK, Color::BRIGHT_RED + Color::BG_RED);
     buffer.setCell(x + w - 2, y, "]", titleFgColor + titleBgColor);
     
-    // Content area
+    // Content area (stop before right border)
     for (int row = 1; row < h - 1; row++) {
-        for (int col = 1; col < w - 1; col++) {
+        for (int col = 1; col < w - 2; col++) {
             if (row >= h - 2 && col >= w - 2) continue; // Skip resize area
             buffer.setCell(x + col, y + row, " ", contentColor);
         }
@@ -89,14 +89,14 @@ void Window::draw(UnicodeBuffer& buffer) {
     }
     
     // Content with Unicode bullets and symbols (clipped to not overwrite borders)
-    buffer.drawStringClipped(x + 2, y + 2, Unicode::BULLET + " " + title, Color::BRIGHT_BLUE + Color::BG_WHITE, x + w - 1);
-    buffer.drawStringClipped(x + 2, y + 3, Unicode::ARROW_RIGHT + " Size: " + std::to_string(w) + "x" + std::to_string(h), contentColor, x + w - 1);
+    buffer.drawStringClipped(x + 2, y + 2, Unicode::BULLET + " " + title, Color::BRIGHT_BLUE + Color::BG_WHITE, x + w - 2);
+    buffer.drawStringClipped(x + 2, y + 3, Unicode::ARROW_RIGHT + " Size: " + std::to_string(w) + "x" + std::to_string(h), contentColor, x + w - 2);
     
     if (h > 5) {
-        buffer.drawStringClipped(x + 2, y + 4, Unicode::TRIANGLE_UP + " Moves: " + std::to_string(moveCount), contentColor, x + w - 1);
+        buffer.drawStringClipped(x + 2, y + 4, Unicode::TRIANGLE_UP + " Moves: " + std::to_string(moveCount), contentColor, x + w - 2);
     }
     if (h > 6) {
-        buffer.drawStringClipped(x + 2, y + 5, Unicode::TRIANGLE_DOWN + " Resizes: " + std::to_string(resizeCount), contentColor, x + w - 1);
+        buffer.drawStringClipped(x + 2, y + 5, Unicode::TRIANGLE_DOWN + " Resizes: " + std::to_string(resizeCount), contentColor, x + w - 2);
     }
     
     // Status with Unicode indicators
@@ -104,7 +104,7 @@ void Window::draw(UnicodeBuffer& buffer) {
         std::string status = active ? Unicode::CHECK + " ACTIVE" : Unicode::CIRCLE + " Inactive";
         if (dragging) status = Unicode::TRIANGLE_RIGHT + " DRAGGING";
         if (resizing) status = Unicode::RESIZE_HANDLE + " RESIZING";
-        buffer.drawStringClipped(x + 2, y + h - 3, status, Color::BRIGHT_WHITE + Color::BG_BLUE, x + w - 1);
+        buffer.drawStringClipped(x + 2, y + h - 3, status, Color::BRIGHT_WHITE + Color::BG_BLUE, x + w - 2);
     }
 }
 

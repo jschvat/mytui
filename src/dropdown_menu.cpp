@@ -67,9 +67,9 @@ void DropdownMenu::drawMenu(UnicodeBuffer& buffer) {
     // Draw menu background and border using single-line box drawing
     buffer.drawBox(x, menuY, width, height, borderColor, true, false);
     
-    // Fill menu background (excluding borders)
+    // Fill menu background (excluding borders - stop before right border)
     for (int row = 1; row < height - 1; row++) {
-        for (int col = 1; col < width - 1; col++) {
+        for (int col = 1; col < width - 2; col++) {
             buffer.setCell(x + col, menuY + row, " ", bgColor);
         }
     }
