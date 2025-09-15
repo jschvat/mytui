@@ -27,49 +27,49 @@ public:
     void createMenus() {
         // File menu
         auto fileMenu = std::make_shared<DropdownMenu>(2, 1, "File");
-        fileMenu->addItem("New", [this]() { 
+        fileMenu->addItem("New", "Ctrl+N", [this]() { 
             statusMessage = "New file selected!"; 
         });
-        fileMenu->addItem("Open", [this]() { 
+        fileMenu->addItem("Open", "Ctrl+O", [this]() { 
             statusMessage = "Open file selected!"; 
         });
-        fileMenu->addItem("Save", [this]() { 
+        fileMenu->addItem("Save", "Ctrl+S", [this]() { 
             statusMessage = "Save file selected!"; 
         });
         fileMenu->addSeparator();
-        fileMenu->addItem("Exit", [this]() { 
+        fileMenu->addItem("Exit", "Alt+F4", [this]() { 
             statusMessage = "Exit selected! (Use Q to quit)"; 
         });
         
         // Edit menu
         auto editMenu = std::make_shared<DropdownMenu>(10, 1, "Edit");
-        editMenu->addItem("Cut", [this]() { 
+        editMenu->addItem("Cut", "Ctrl+X", [this]() { 
             statusMessage = "Cut selected!"; 
         });
-        editMenu->addItem("Copy", [this]() { 
+        editMenu->addItem("Copy", "Ctrl+C", [this]() { 
             statusMessage = "Copy selected!"; 
         });
-        editMenu->addItem("Paste", [this]() { 
+        editMenu->addItem("Paste", "Ctrl+V", [this]() { 
             statusMessage = "Paste selected!"; 
         });
         editMenu->addSeparator();
-        editMenu->addItem("Find", [this]() { 
+        editMenu->addItem("Find", "Ctrl+F", [this]() { 
             statusMessage = "Find selected!"; 
         });
-        editMenu->addItem("Replace", [this]() { 
+        editMenu->addItem("Replace", "Ctrl+H", [this]() { 
             statusMessage = "Replace selected!"; 
         });
         
         // View menu
         auto viewMenu = std::make_shared<DropdownMenu>(18, 1, "View");
-        viewMenu->addItem("Zoom In", [this]() { 
+        viewMenu->addItem("Zoom In", "Ctrl++", [this]() { 
             statusMessage = "Zoom In selected!"; 
         });
-        viewMenu->addItem("Zoom Out", [this]() { 
+        viewMenu->addItem("Zoom Out", "Ctrl+-", [this]() { 
             statusMessage = "Zoom Out selected!"; 
         });
         viewMenu->addSeparator();
-        viewMenu->addItem("Full Screen", [this]() { 
+        viewMenu->addItem("Full Screen", "F11", [this]() { 
             statusMessage = "Full Screen selected!"; 
         });
         

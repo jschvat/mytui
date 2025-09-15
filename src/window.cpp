@@ -77,15 +77,14 @@ void Window::draw(UnicodeBuffer& buffer) {
     
     // Content area (stop before right border)
     for (int row = 1; row < h - 1; row++) {
-        for (int col = 1; col < w - 2; col++) {
-            if (row >= h - 2 && col >= w - 2) continue; // Skip resize area
+        for (int col = 1; col < w - 1; col++) {
             buffer.setCell(x + col, y + row, " ", contentColor);
         }
     }
     
-    // Resize handle indicators (don't overwrite border corners)
-    if (w > 15 && h > 6) {
-        buffer.setCell(x + w - 2, y + h - 2, Unicode::RESIZE_HANDLE, Color::BRIGHT_GREEN + Color::BG_WHITE);
+    // Resize handle in border corner (bottom-right)
+    if (w > 6 && h > 3) {
+        buffer.setCell(x + w - 1, y + h - 1, Unicode::RESIZE_HANDLE, borderColor);
     }
     
     // Content with Unicode bullets and symbols (clipped to not overwrite borders)
@@ -103,7 +102,7 @@ void Window::draw(UnicodeBuffer& buffer) {
     if (h > 7) {
         std::string status = active ? Unicode::CHECK + " ACTIVE" : Unicode::CIRCLE + " Inactive";
         if (dragging) status = Unicode::TRIANGLE_RIGHT + " DRAGGING";
-        if (resizing) status = Unicode::RESIZE_HANDLE + " RESIZING";
+        if (resizing) status = Unicode::TRIANGLE_UP + " RESIZING";
         buffer.drawStringClipped(x + 2, y + h - 3, status, Color::BRIGHT_WHITE + Color::BG_BLUE, x + w - 2);
     }
 }

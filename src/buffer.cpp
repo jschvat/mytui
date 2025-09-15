@@ -102,3 +102,4 @@ void UnicodeBuffer::render() {
     output << Color::RESET;
     std::cout << output.str() << std::flush;
 }
+

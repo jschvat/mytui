@@ -63,6 +63,13 @@ namespace ASMOptimized {
     // Cache optimization
     void prefetch_buffer_region(void* buffer, size_t size);
     
+    // Advanced SIMD optimizations
+    size_t fast_render_buffer_optimized(char* output_buffer, const char** cells, const char** colors, 
+                                       size_t width, size_t height, size_t max_output_size);
+    void fast_pattern_fill_avx2(void* dest, uint64_t pattern, size_t count);
+    void fast_unicode_box_fill(char** cells, char** colors, int x, int y, int w, int h,
+                               const char* fill_char, const char* color);
+    
     // Advanced CPU feature detection
     struct CPUFeatures {
         bool sse2;

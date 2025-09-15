@@ -18,7 +18,11 @@ void DropdownMenu::calculateDimensions() {
     width = triggerWidth + 8;  // Add extra width
     for (const auto& item : items) {
         if (!item.separator) {
-            width = std::max(width, (int)item.text.length() + 8);  // More padding
+            int itemWidth = item.text.length() + 8;  // Base padding
+            if (!item.shortcut.empty()) {
+                itemWidth += item.shortcut.length() + 4;  // Extra space for shortcut + padding
+            }
+            width = std::max(width, itemWidth);
         }
     }
     width = std::max(width, 20);  // Larger minimum width
@@ -28,12 +32,17 @@ void DropdownMenu::calculateDimensions() {
 }
 
 void DropdownMenu::addItem(const std::string& text, MenuCallback callback) {
-    items.emplace_back(text, callback, true, false);
+    items.emplace_back(text, "", callback, true, false);
+    calculateDimensions();
+}
+
+void DropdownMenu::addItem(const std::string& text, const std::string& shortcut, MenuCallback callback) {
+    items.emplace_back(text, shortcut, callback, true, false);
     calculateDimensions();
 }
 
 void DropdownMenu::addSeparator() {
-    items.emplace_back("", nullptr, false, true);
+    items.emplace_back("", "", nullptr, false, true);
     calculateDimensions();
 }
 
@@ -56,23 +65,23 @@ void DropdownMenu::drawTrigger(UnicodeBuffer& buffer) {
 void DropdownMenu::drawMenu(UnicodeBuffer& buffer) {
     if (!menuOpen) return;
     
-    std::string borderColor = Color::BRIGHT_YELLOW;
-    std::string bgColor = Color::BLACK + Color::BG_BRIGHT_WHITE;
-    std::string selectedColor = Color::BRIGHT_WHITE + Color::BG_MAGENTA;
-    std::string disabledColor = Color::BLACK + Color::BG_WHITE;
+    std::string borderColor = Color::ORANGE + Color::BG_BLACK;  // Orange borders on black background
+    std::string bgColor = Color::BRIGHT_WHITE + Color::BG_BLACK;     // Match menu bar
+    std::string selectedColor = Color::BLACK + Color::BG_BRIGHT_WHITE;  // Inverse for selection
+    std::string disabledColor = Color::CYAN + Color::BG_BLACK;      // Dimmed on same background
     
     // Menu appears below the trigger
     int menuY = triggerY + 1;
     
-    // Draw menu background and border using single-line box drawing
-    buffer.drawBox(x, menuY, width, height, borderColor, true, false);
-    
-    // Fill menu background (excluding borders - stop before right border)
-    for (int row = 1; row < height - 1; row++) {
-        for (int col = 1; col < width - 2; col++) {
+    // Fill entire menu area with background color first
+    for (int row = 0; row < height; row++) {
+        for (int col = 0; col < width; col++) {
             buffer.setCell(x + col, menuY + row, " ", bgColor);
         }
     }
+    
+    // Draw menu border using single-line box drawing over the background
+    buffer.drawBox(x, menuY, width, height, borderColor, true, false);
     
     // Draw menu items
     int itemY = menuY + 1;
@@ -93,22 +102,40 @@ void DropdownMenu::drawMenu(UnicodeBuffer& buffer) {
                 textColor = disabledColor;
             }
             
-            // Only draw highlighted background for the text area, not the entire row
+            // Draw highlighted background for entire row including borders
             if (i == selectedIndex && item.enabled) {
-                // Draw highlighted background only for text width + padding, but stop before right border
-                int textWidth = std::min((int)item.text.length() + 4, width - 3);
-                for (int col = 1; col <= textWidth && col < width - 2; col++) {
-                    buffer.setCell(x + col, itemY, " ", selectedColor);
+                // Highlight the entire row width including borders
+                for (int col = 0; col < width; col++) {
+                    std::string currentChar = " ";
+                    if (col == 0) {
+                        currentChar = Unicode::VERTICAL;  // Left border
+                    } else if (col == width - 1) {
+                        currentChar = Unicode::VERTICAL;  // Right border
+                    }
+                    buffer.setCell(x + col, itemY, currentChar, selectedColor);
                 }
             }
             
-            // Draw item text (clipped to avoid right border)
-            std::string displayText = "  " + item.text;
-            buffer.drawStringClipped(x + 1, itemY, displayText, textColor, x + width - 2);
-            
-            // Add indicator if needed
-            if (item.enabled && i == selectedIndex) {
-                buffer.setCell(x + width - 3, itemY, Unicode::TRIANGLE_RIGHT, textColor);
+            // Draw item text (only if not already highlighted)
+            if (!(i == selectedIndex && item.enabled)) {
+                std::string displayText = "  " + item.text;
+                buffer.drawStringClipped(x + 1, itemY, displayText, textColor, x + width - 2);
+                
+                // Draw shortcut key if present (right-aligned)
+                if (!item.shortcut.empty()) {
+                    int shortcutX = x + width - item.shortcut.length() - 3;  // Right-align with padding
+                    buffer.drawStringClipped(shortcutX, itemY, item.shortcut, textColor, x + width - 2);
+                }
+            } else {
+                // Draw text over highlighted background
+                std::string displayText = "  " + item.text;
+                buffer.drawStringClipped(x + 1, itemY, displayText, selectedColor, x + width - 2);
+                
+                // Draw shortcut key if present (right-aligned)
+                if (!item.shortcut.empty()) {
+                    int shortcutX = x + width - item.shortcut.length() - 3;  // Right-align with padding
+                    buffer.drawStringClipped(shortcutX, itemY, item.shortcut, selectedColor, x + width - 2);
+                }
             }
         }
         itemY++;

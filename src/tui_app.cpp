@@ -152,57 +152,8 @@ void TUIApplication::run() {
 }
 
 void TUIApplication::drawMouseCursor() {
-    int mouse_x = mouse.getMouseX();
-    int mouse_y = mouse.getMouseY();
-    
-    // Determine appropriate cursor type based on context
-    CursorType new_cursor_type = determineCursorType(mouse_x, mouse_y);
-    current_cursor_type = new_cursor_type;
-    
-    // Choose cursor character and color based on type
-    std::string cursor_char;
-    std::string cursor_color;
-    
-    switch (current_cursor_type) {
-        case CursorType::DEFAULT:
-            cursor_char = Unicode::CURSOR_DEFAULT;
-            cursor_color = Color::BRIGHT_WHITE;
-            break;
-        case CursorType::POINTER:
-            cursor_char = Unicode::CURSOR_POINTER;
-            cursor_color = Color::BRIGHT_CYAN;
-            break;
-        case CursorType::HAND:
-            cursor_char = Unicode::CURSOR_HAND;
-            cursor_color = Color::BRIGHT_YELLOW;
-            break;
-        case CursorType::RESIZE:
-            cursor_char = Unicode::CURSOR_RESIZE;
-            cursor_color = Color::BRIGHT_MAGENTA;
-            break;
-        case CursorType::MOVE:
-            cursor_char = Unicode::CURSOR_MOVE;
-            cursor_color = Color::BRIGHT_GREEN;
-            break;
-        case CursorType::TEXT:
-            cursor_char = Unicode::CURSOR_TEXT;
-            cursor_color = Color::BRIGHT_BLUE;
-            break;
-        case CursorType::CROSSHAIR:
-            cursor_char = Unicode::CURSOR_CROSSHAIR;
-            cursor_color = Color::BRIGHT_RED;
-            break;
-    }
-    
-    // Add subtle cursor trail effect if mouse moved
-    if (mouse_moved && frame % 2 == 0) {
-        cursor_color = cursor_color + Color::BG_BLACK;
-    }
-    
-    // Draw the cursor
-    if (mouse_x >= 0 && mouse_x < term_width && mouse_y >= 0 && mouse_y < term_height) {
-        buffer->setCell(mouse_x, mouse_y, cursor_char, cursor_color);
-    }
+    // Mouse cursor drawing disabled to prevent visual interference
+    // Mouse interaction still works through mouse handlers in components
 }
 
 CursorType TUIApplication::determineCursorType(int mouse_x, int mouse_y) {

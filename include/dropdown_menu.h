@@ -14,12 +14,13 @@ using MenuCallback = std::function<void()>;
 // Individual menu item
 struct MenuItem {
     std::string text;
+    std::string shortcut;  // Keyboard shortcut (e.g., "Ctrl+N", "F1")
     MenuCallback callback;
     bool enabled;
     bool separator;
     
-    MenuItem(const std::string& text, MenuCallback callback = nullptr, bool enabled = true, bool separator = false)
-        : text(text), callback(callback), enabled(enabled), separator(separator) {}
+    MenuItem(const std::string& text, const std::string& shortcut = "", MenuCallback callback = nullptr, bool enabled = true, bool separator = false)
+        : text(text), shortcut(shortcut), callback(callback), enabled(enabled), separator(separator) {}
 };
 
 // Dropdown menu component
@@ -52,6 +53,7 @@ public:
     
     // Menu management
     void addItem(const std::string& text, MenuCallback callback);
+    void addItem(const std::string& text, const std::string& shortcut, MenuCallback callback);
     void addSeparator();
     void clearItems();
     

@@ -19,6 +19,7 @@ namespace Color {
     const std::string BRIGHT_RED = "\033[91m";
     const std::string BRIGHT_YELLOW = "\033[93m";
     const std::string BRIGHT_MAGENTA = "\033[95m";
+    const std::string ORANGE = "\033[38;5;208m";  // 256-color orange
     const std::string BG_BLUE = "\033[44m";
     const std::string BG_WHITE = "\033[47m";
     const std::string BG_CYAN = "\033[46m";
