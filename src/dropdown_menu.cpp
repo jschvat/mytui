@@ -64,10 +64,10 @@ void DropdownMenu::drawMenu(UnicodeBuffer& buffer) {
     // Menu appears below the trigger
     int menuY = triggerY + 1;
     
-    // Draw menu background and border
-    buffer.drawBox(x, menuY, width, height, borderColor, false, false);
+    // Draw menu background and border using single-line box drawing
+    buffer.drawBox(x, menuY, width, height, borderColor, true, false);
     
-    // Fill menu background
+    // Fill menu background (excluding borders)
     for (int row = 1; row < height - 1; row++) {
         for (int col = 1; col < width - 1; col++) {
             buffer.setCell(x + col, menuY + row, " ", bgColor);
@@ -85,26 +85,30 @@ void DropdownMenu::drawMenu(UnicodeBuffer& buffer) {
                 buffer.setCell(x + col, itemY, Unicode::HORIZONTAL, borderColor);
             }
         } else {
-            // Determine item color
-            std::string itemColor = bgColor;
+            // Determine text color
+            std::string textColor = bgColor;
             if (i == selectedIndex && item.enabled) {
-                itemColor = selectedColor;
+                textColor = selectedColor;
             } else if (!item.enabled) {
-                itemColor = disabledColor;
+                textColor = disabledColor;
             }
             
-            // Draw item background
-            for (int col = 1; col < width - 1; col++) {
-                buffer.setCell(x + col, itemY, " ", itemColor);
+            // Only draw highlighted background for the text area, not the entire row
+            if (i == selectedIndex && item.enabled) {
+                // Draw highlighted background only for text width + padding
+                int textWidth = std::min((int)item.text.length() + 4, width - 2);
+                for (int col = 1; col < textWidth + 1 && col < width - 1; col++) {
+                    buffer.setCell(x + col, itemY, " ", selectedColor);
+                }
             }
             
             // Draw item text
-            std::string displayText = " " + item.text;
-            buffer.drawStringClipped(x + 1, itemY, displayText, itemColor, x + width - 1);
+            std::string displayText = "  " + item.text;
+            buffer.drawStringClipped(x + 1, itemY, displayText, textColor, x + width - 1);
             
-            // Add checkmark or indicator if needed
+            // Add indicator if needed
             if (item.enabled && i == selectedIndex) {
-                buffer.setCell(x + width - 2, itemY, Unicode::TRIANGLE_RIGHT, itemColor);
+                buffer.setCell(x + width - 3, itemY, Unicode::TRIANGLE_RIGHT, textColor);
             }
         }
         itemY++;
