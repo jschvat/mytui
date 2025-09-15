@@ -9,19 +9,19 @@ DropdownMenu::DropdownMenu(int x, int y, const std::string& title)
 
 void DropdownMenu::calculateDimensions() {
     // Calculate trigger dimensions
-    triggerWidth = title.length() + 4;  // Add padding and dropdown arrow
+    triggerWidth = title.length() + 6;  // Add more padding, no dropdown arrow
     triggerHeight = 1;
     triggerX = x;
     triggerY = y;
     
-    // Calculate menu dimensions
-    width = triggerWidth;
+    // Calculate menu dimensions with generous padding
+    width = triggerWidth + 8;  // Add extra width
     for (const auto& item : items) {
         if (!item.separator) {
-            width = std::max(width, (int)item.text.length() + 4);
+            width = std::max(width, (int)item.text.length() + 8);  // More padding
         }
     }
-    width = std::max(width, 12);  // Minimum width
+    width = std::max(width, 20);  // Larger minimum width
     
     height = items.size() + 2;  // Items + top/bottom borders
     if (height < 3) height = 3;  // Minimum height
@@ -48,8 +48,8 @@ void DropdownMenu::drawTrigger(UnicodeBuffer& buffer) {
         Color::BLACK + Color::BG_BRIGHT_WHITE : 
         Color::BRIGHT_WHITE + Color::BG_BLACK;
     
-    // Draw trigger button with dropdown arrow
-    std::string displayText = " " + title + " " + Unicode::TRIANGLE_DOWN;
+    // Draw trigger button without dropdown arrow, with more padding
+    std::string displayText = "  " + title + "  ";
     buffer.drawString(triggerX, triggerY, displayText, triggerColor);
 }
 
@@ -125,7 +125,9 @@ bool DropdownMenu::triggerContains(int mx, int my) const {
 bool DropdownMenu::menuContains(int mx, int my) const {
     if (!menuOpen) return false;
     int menuY = triggerY + 1;
-    return mx >= x && mx < x + width && my >= menuY && my < menuY + height;
+    // Use the same adjustment logic as in updateMouse for consistency
+    int adjustedX = x;
+    return mx >= adjustedX && mx < adjustedX + width && my >= menuY && my < menuY + height;
 }
 
 int DropdownMenu::getItemAtPosition(int mx, int my) const {
@@ -145,6 +147,13 @@ int DropdownMenu::getItemAtPosition(int mx, int my) const {
 
 void DropdownMenu::updateMouse(FastMouseHandler& mouse, int termWidth, int termHeight) {
     if (!visible) return;
+    
+    // Adjust menu position if it would go off screen
+    int adjustedX = x;
+    if (x + width > termWidth) {
+        adjustedX = termWidth - width;
+    }
+    if (adjustedX < 0) adjustedX = 0;
     
     int mouseX = mouse.getMouseX();
     int mouseY = mouse.getMouseY();
@@ -195,5 +204,15 @@ void DropdownMenu::executeCallback(int index) {
         if (item.enabled && item.callback) {
             item.callback();
         }
+    }
+}
+
+// Static utility for drawing menu bar background
+void DropdownMenu::drawMenuBar(UnicodeBuffer& buffer, int y, int termWidth) {
+    std::string barColor = Color::BRIGHT_WHITE + Color::BG_BLACK;
+    
+    // Draw horizontal menu bar background across entire screen
+    for (int x = 0; x < termWidth; x++) {
+        buffer.setCell(x, y, " ", barColor);
     }
 }

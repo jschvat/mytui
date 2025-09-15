@@ -150,6 +150,9 @@ public:
                 }
             }
             
+            // Draw horizontal menu bar background first
+            DropdownMenu::drawMenuBar(*buffer, 1, term_width);
+            
             // Draw menus (on top of everything)
             for (auto& menu : menus) {
                 menu->draw(*buffer);

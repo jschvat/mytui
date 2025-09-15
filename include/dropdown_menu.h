@@ -60,6 +60,9 @@ public:
     void draw(UnicodeBuffer& buffer);
     void executeCallback(int index);
     
+    // Static utility for drawing menu bar background
+    static void drawMenuBar(UnicodeBuffer& buffer, int y, int termWidth);
+    
     // State management
     void show() { visible = true; }
     void hide() { visible = false; menuOpen = false; }
