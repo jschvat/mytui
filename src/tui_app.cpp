@@ -62,7 +62,7 @@ void TUIApplication::updateTerminalSize() {
 void TUIApplication::drawBackground() {
     for (int y = 0; y < term_height; y++) {
         for (int x = 0; x < term_width; x++) {
-            buffer->setCell(x, y, Unicode::MEDIUM_SHADE, Color::BRIGHT_CYAN + Color::BG_BLUE);
+            buffer->setCell(x, y, "░", Color::BRIGHT_CYAN + Color::BG_BLUE);
         }
     }
 }
