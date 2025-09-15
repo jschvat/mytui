@@ -19,6 +19,9 @@ SOURCES = $(wildcard $(SRCDIR)/*.cpp)
 OBJECTS = $(SOURCES:$(SRCDIR)/%.cpp=$(BUILDDIR)/%.o)
 HEADERS = $(wildcard $(INCLUDEDIR)/*.h)
 
+# ASM optimization flags
+ASM_FLAGS = -msse2 -mavx -mavx2 -O3 -DUSE_ASM_OPTIMIZATIONS=1
+
 # Example files
 EXAMPLE_SOURCES = $(wildcard $(EXAMPLEDIR)/*.cpp)
 EXAMPLES = $(EXAMPLE_SOURCES:$(EXAMPLEDIR)/%.cpp=$(BUILDDIR)/%)
@@ -39,6 +42,15 @@ $(LIBDIR)/$(LIBNAME): $(OBJECTS)
 $(BUILDDIR)/%.o: $(SRCDIR)/%.cpp $(HEADERS)
 	@echo "Compiling $<"
 	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+# Special compilation for ASM optimized files
+$(BUILDDIR)/asm_optimized.o: $(SRCDIR)/asm_optimized.cpp $(HEADERS)
+	@echo "Compiling $< with ASM optimizations"
+	@$(CXX) $(CXXFLAGS) $(ASM_FLAGS) $(INCLUDES) -c $< -o $@
+
+$(BUILDDIR)/optimized_buffer.o: $(SRCDIR)/optimized_buffer.cpp $(HEADERS)
+	@echo "Compiling $< with ASM optimizations"
+	@$(CXX) $(CXXFLAGS) $(ASM_FLAGS) $(INCLUDES) -c $< -o $@
 
 # Build examples
 $(BUILDDIR)/%: $(EXAMPLEDIR)/%.cpp $(LIBDIR)/$(LIBNAME)
@@ -74,6 +86,15 @@ debug: all
 
 release: CXXFLAGS += -DNDEBUG
 release: all
+
+# ASM optimized build
+optimized: CXXFLAGS += $(ASM_FLAGS) -DNDEBUG
+optimized: all
+
+# Build benchmark
+benchmark: $(BUILDDIR)/benchmark
+	@echo "Running benchmark..."
+	@./$(BUILDDIR)/benchmark
 
 # Show project info
 info:

@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wall -Wextra -O3 -DNDEBUG CMakeFiles/demo.dir/examples/demo.cpp.o -o demo  libtui.a 

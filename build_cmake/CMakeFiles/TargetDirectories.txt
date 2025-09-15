@@ -1,0 +1,15 @@
+/home/jason/Development/claude/mytui/build_cmake/CMakeFiles/tui.dir
+/home/jason/Development/claude/mytui/build_cmake/CMakeFiles/demo.dir
+/home/jason/Development/claude/mytui/build_cmake/CMakeFiles/asm_showcase.dir
+/home/jason/Development/claude/mytui/build_cmake/CMakeFiles/asm_demo.dir
+/home/jason/Development/claude/mytui/build_cmake/CMakeFiles/simple_benchmark.dir
+/home/jason/Development/claude/mytui/build_cmake/CMakeFiles/format.dir
+/home/jason/Development/claude/mytui/build_cmake/CMakeFiles/check.dir
+/home/jason/Development/claude/mytui/build_cmake/CMakeFiles/package.dir
+/home/jason/Development/claude/mytui/build_cmake/CMakeFiles/package_source.dir
+/home/jason/Development/claude/mytui/build_cmake/CMakeFiles/edit_cache.dir
+/home/jason/Development/claude/mytui/build_cmake/CMakeFiles/rebuild_cache.dir
+/home/jason/Development/claude/mytui/build_cmake/CMakeFiles/list_install_components.dir
+/home/jason/Development/claude/mytui/build_cmake/CMakeFiles/install.dir
+/home/jason/Development/claude/mytui/build_cmake/CMakeFiles/install/local.dir
+/home/jason/Development/claude/mytui/build_cmake/CMakeFiles/install/strip.dir

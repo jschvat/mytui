@@ -7,6 +7,16 @@
 #include <memory>
 #include <sys/ioctl.h>
 
+enum class CursorType {
+    DEFAULT,
+    POINTER,
+    HAND,
+    RESIZE,
+    MOVE,
+    TEXT,
+    CROSSHAIR
+};
+
 class TUIApplication {
 private:
     FastMouseHandler mouse;
@@ -15,11 +25,18 @@ private:
     int term_width, term_height;
     int frame;
     
+    // Cursor state
+    CursorType current_cursor_type;
+    int last_mouse_x, last_mouse_y;
+    bool mouse_moved;
+    
     void setupTerminal();
     void restoreTerminal();
     void updateTerminalSize();
     void drawBackground();
     void drawStatusBar();
+    void drawMouseCursor();
+    CursorType determineCursorType(int mouse_x, int mouse_y);
     
 public:
     TUIApplication();

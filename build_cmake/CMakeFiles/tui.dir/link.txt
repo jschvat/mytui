@@ -1,0 +1,2 @@
+/usr/bin/ar qc libtui.a CMakeFiles/tui.dir/src/buffer.cpp.o CMakeFiles/tui.dir/src/mouse_handler.cpp.o CMakeFiles/tui.dir/src/tui_app.cpp.o CMakeFiles/tui.dir/src/window.cpp.o CMakeFiles/tui.dir/src/asm_optimized.cpp.o
+/usr/bin/ranlib libtui.a

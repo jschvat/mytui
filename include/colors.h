@@ -89,6 +89,15 @@ namespace Unicode {
     const std::string MAXIMIZE = "+";
     const std::string CLOSE_BUTTON = "X";
     
+    // Mouse cursor styles
+    const std::string CURSOR_DEFAULT = "+";
+    const std::string CURSOR_POINTER = ">";
+    const std::string CURSOR_HAND = "@";
+    const std::string CURSOR_RESIZE = "#";
+    const std::string CURSOR_MOVE = "*";
+    const std::string CURSOR_TEXT = "|";
+    const std::string CURSOR_CROSSHAIR = "+";
+    
     // Arrows
     const std::string ARROW_UP = "^";
     const std::string ARROW_DOWN = "v";

@@ -5,7 +5,8 @@
 #include <unistd.h>
 #include <algorithm>
 
-TUIApplication::TUIApplication() : buffer(nullptr), frame(0) {
+TUIApplication::TUIApplication() : buffer(nullptr), frame(0), 
+    current_cursor_type(CursorType::DEFAULT), last_mouse_x(-1), last_mouse_y(-1), mouse_moved(false) {
     setupTerminal();
     updateTerminalSize();
     buffer = new UnicodeBuffer(term_width, term_height);
@@ -105,8 +106,12 @@ void TUIApplication::run() {
         buffer->clear();
         drawBackground();
         
-        // Show mouse cursor
-        buffer->setCell(mouse.getMouseX(), mouse.getMouseY(), Unicode::DIAMOND, Color::RED);
+        // Track mouse movement
+        int current_mouse_x = mouse.getMouseX();
+        int current_mouse_y = mouse.getMouseY();
+        mouse_moved = (current_mouse_x != last_mouse_x || current_mouse_y != last_mouse_y);
+        last_mouse_x = current_mouse_x;
+        last_mouse_y = current_mouse_y;
         
         // Reset window states
         for (auto& window : windows) {
@@ -137,12 +142,99 @@ void TUIApplication::run() {
             }
         }
         
+        // Draw enhanced mouse cursor (always on top)
+        drawMouseCursor();
+        
         drawStatusBar();
         buffer->render();
         
         frame++;
         usleep(16000); // ~60 FPS
     }
+}
+
+void TUIApplication::drawMouseCursor() {
+    int mouse_x = mouse.getMouseX();
+    int mouse_y = mouse.getMouseY();
+    
+    // Determine appropriate cursor type based on context
+    CursorType new_cursor_type = determineCursorType(mouse_x, mouse_y);
+    current_cursor_type = new_cursor_type;
+    
+    // Choose cursor character and color based on type
+    std::string cursor_char;
+    std::string cursor_color;
+    
+    switch (current_cursor_type) {
+        case CursorType::DEFAULT:
+            cursor_char = Unicode::CURSOR_DEFAULT;
+            cursor_color = Color::BRIGHT_WHITE;
+            break;
+        case CursorType::POINTER:
+            cursor_char = Unicode::CURSOR_POINTER;
+            cursor_color = Color::BRIGHT_CYAN;
+            break;
+        case CursorType::HAND:
+            cursor_char = Unicode::CURSOR_HAND;
+            cursor_color = Color::BRIGHT_YELLOW;
+            break;
+        case CursorType::RESIZE:
+            cursor_char = Unicode::CURSOR_RESIZE;
+            cursor_color = Color::BRIGHT_MAGENTA;
+            break;
+        case CursorType::MOVE:
+            cursor_char = Unicode::CURSOR_MOVE;
+            cursor_color = Color::BRIGHT_GREEN;
+            break;
+        case CursorType::TEXT:
+            cursor_char = Unicode::CURSOR_TEXT;
+            cursor_color = Color::BRIGHT_BLUE;
+            break;
+        case CursorType::CROSSHAIR:
+            cursor_char = Unicode::CURSOR_CROSSHAIR;
+            cursor_color = Color::BRIGHT_RED;
+            break;
+    }
+    
+    // Add subtle cursor trail effect if mouse moved
+    if (mouse_moved && frame % 2 == 0) {
+        cursor_color = cursor_color + Color::BG_BLACK;
+    }
+    
+    // Draw the cursor
+    if (mouse_x >= 0 && mouse_x < term_width && mouse_y >= 0 && mouse_y < term_height) {
+        buffer->setCell(mouse_x, mouse_y, cursor_char, cursor_color);
+    }
+}
+
+CursorType TUIApplication::determineCursorType(int mouse_x, int mouse_y) {
+    // Check if mouse is over any interactive elements
+    for (auto& window : windows) {
+        if (!window->isVisible()) continue;
+        
+        // Check if over close button
+        if (window->closeButtonContains(mouse_x, mouse_y)) {
+            return CursorType::HAND;
+        }
+        
+        // Check if over resize handle
+        if (window->resizeHandleContains(mouse_x, mouse_y)) {
+            return CursorType::RESIZE;
+        }
+        
+        // Check if over title bar (draggable area)
+        if (window->titleContains(mouse_x, mouse_y)) {
+            return CursorType::MOVE;
+        }
+        
+        // Check if over window content
+        if (window->contains(mouse_x, mouse_y)) {
+            return CursorType::POINTER;
+        }
+    }
+    
+    // Default cursor for empty areas
+    return CursorType::DEFAULT;
 }
 
 void TUIApplication::quit() {

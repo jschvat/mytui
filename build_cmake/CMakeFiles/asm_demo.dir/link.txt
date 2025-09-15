@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wall -Wextra -O3 -DNDEBUG CMakeFiles/asm_demo.dir/examples/asm_demo.cpp.o -o asm_demo  libtui.a 
