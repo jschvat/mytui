@@ -95,16 +95,16 @@ void DropdownMenu::drawMenu(UnicodeBuffer& buffer) {
             
             // Only draw highlighted background for the text area, not the entire row
             if (i == selectedIndex && item.enabled) {
-                // Draw highlighted background only for text width + padding
-                int textWidth = std::min((int)item.text.length() + 4, width - 2);
-                for (int col = 1; col < textWidth + 1 && col < width - 1; col++) {
+                // Draw highlighted background only for text width + padding, but stop before right border
+                int textWidth = std::min((int)item.text.length() + 4, width - 3);
+                for (int col = 1; col <= textWidth && col < width - 2; col++) {
                     buffer.setCell(x + col, itemY, " ", selectedColor);
                 }
             }
             
-            // Draw item text
+            // Draw item text (clipped to avoid right border)
             std::string displayText = "  " + item.text;
-            buffer.drawStringClipped(x + 1, itemY, displayText, textColor, x + width - 1);
+            buffer.drawStringClipped(x + 1, itemY, displayText, textColor, x + width - 2);
             
             // Add indicator if needed
             if (item.enabled && i == selectedIndex) {
