@@ -64,6 +64,7 @@ set(TUI_SOURCES
     src/mouse_handler.cpp
     src/tui_app.cpp
     src/window.cpp
+    src/dropdown_menu.cpp
     src/asm_optimized.cpp
 )
 
@@ -73,6 +74,7 @@ set(TUI_HEADERS
     include/mouse_handler.h
     include/tui_app.h
     include/window.h
+    include/dropdown_menu.h
     include/asm_optimized.h
 )
 
@@ -107,6 +109,10 @@ if(BUILD_EXAMPLES)
     # ASM demo (interactive)
     add_executable(asm_demo examples/asm_demo.cpp)
     target_link_libraries(asm_demo tui)
+    
+    # Dropdown menu demo
+    add_executable(dropdown_demo examples/dropdown_demo.cpp)
+    target_link_libraries(dropdown_demo tui)
     
     message(STATUS "Examples: enabled")
 else()

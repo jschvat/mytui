@@ -18,7 +18,7 @@ enum class CursorType {
 };
 
 class TUIApplication {
-private:
+protected:
     FastMouseHandler mouse;
     UnicodeBuffer* buffer;
     std::vector<std::shared_ptr<Window>> windows;
@@ -44,7 +44,7 @@ public:
     
     void addWindow(std::shared_ptr<Window> window);
     void removeWindow(std::shared_ptr<Window> window);
-    void run();
+    virtual void run();
     void quit();
     
     int getTermWidth() const { return term_width; }
