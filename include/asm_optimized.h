@@ -50,6 +50,29 @@ namespace ASMOptimized {
     
     // Performance measurement
     uint64_t get_cpu_cycles();
+    
+    // Advanced SIMD operations
+    void fast_memset_pattern(void* dest, int pattern, size_t count);
+    size_t fast_string_compare_colors(const char* color1, const char* color2, size_t max_len);
+    
+    // Optimized box drawing
+    void fast_draw_box_borders(char** cells, char** colors, int x, int y, int w, int h,
+                              char corner_char, char horizontal_char, char vertical_char,
+                              const char* color);
+    
+    // Cache optimization
+    void prefetch_buffer_region(void* buffer, size_t size);
+    
+    // Advanced CPU feature detection
+    struct CPUFeatures {
+        bool sse2;
+        bool sse4_1;
+        bool avx;
+        bool avx2;
+        bool avx512f;
+    };
+    
+    CPUFeatures detect_advanced_cpu_features();
 }
 
 // Fallback to C++ implementations if ASM not available
