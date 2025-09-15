@@ -45,8 +45,8 @@ void DropdownMenu::clearItems() {
 
 void DropdownMenu::drawTrigger(UnicodeBuffer& buffer) {
     std::string triggerColor = active ? 
-        Color::BLACK + Color::BG_BRIGHT_CYAN : 
-        Color::WHITE + Color::BG_BLUE;
+        Color::BLACK + Color::BG_BRIGHT_WHITE : 
+        Color::BRIGHT_WHITE + Color::BG_BLACK;
     
     // Draw trigger button with dropdown arrow
     std::string displayText = " " + title + " " + Unicode::TRIANGLE_DOWN;
@@ -56,9 +56,9 @@ void DropdownMenu::drawTrigger(UnicodeBuffer& buffer) {
 void DropdownMenu::drawMenu(UnicodeBuffer& buffer) {
     if (!menuOpen) return;
     
-    std::string borderColor = Color::BRIGHT_CYAN;
-    std::string bgColor = Color::BLACK + Color::BG_WHITE;
-    std::string selectedColor = Color::WHITE + Color::BG_BLUE;
+    std::string borderColor = Color::BRIGHT_YELLOW;
+    std::string bgColor = Color::BLACK + Color::BG_BRIGHT_WHITE;
+    std::string selectedColor = Color::BRIGHT_WHITE + Color::BG_MAGENTA;
     std::string disabledColor = Color::BLACK + Color::BG_WHITE;
     
     // Menu appears below the trigger
