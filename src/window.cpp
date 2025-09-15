@@ -36,22 +36,22 @@ void Window::draw(UnicodeBuffer& buffer) {
     contentColor = Color::BLACK + Color::BG_WHITE;
     shadowColor = Color::BLACK + Color::BG_BLACK;
     
-    // Draw shadow directly adjacent to window (no gap)
+    // Draw solid black shadow directly adjacent to window (no gap)
     // Right edge shadow
     for (int i = 1; i < h; i++) {
         if (x + w < 200 && y + i < 100) {
-            buffer.setCell(x + w, y + i, Unicode::MEDIUM_SHADE, shadowColor);
+            buffer.setCell(x + w, y + i, Unicode::FULL_BLOCK, shadowColor);
         }
     }
     // Bottom edge shadow
     for (int i = 1; i < w; i++) {
         if (x + i < 200 && y + h < 100) {
-            buffer.setCell(x + i, y + h, Unicode::LIGHT_SHADE, shadowColor);
+            buffer.setCell(x + i, y + h, Unicode::FULL_BLOCK, shadowColor);
         }
     }
     // Bottom-right corner shadow
     if (x + w < 200 && y + h < 100) {
-        buffer.setCell(x + w, y + h, Unicode::DARK_SHADE, shadowColor);
+        buffer.setCell(x + w, y + h, Unicode::FULL_BLOCK, shadowColor);
     }
     
     // Draw main window box with style variations
