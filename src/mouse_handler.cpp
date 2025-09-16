@@ -70,12 +70,13 @@ void FastMouseHandler::parseMouseData(const std::string& data, bool isPress) {
             int y = std::stoi(yStr) - 1;
             
             if (x >= 0 && x < 200 && y >= 0 && y < 100) {
-                bool isLeftButton = (button & 3) == 0;
+                // Always update mouse position regardless of button state
+                currentX = x;
+                currentY = y;
                 
+                // Handle left button state separately
+                bool isLeftButton = (button & 3) == 0;
                 if (isLeftButton) {
-                    currentX = x;
-                    currentY = y;
-                    
                     if (isPress && !leftPressed) {
                         leftPressed = true;
                     } else if (!isPress && leftPressed) {

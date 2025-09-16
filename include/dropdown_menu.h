@@ -65,6 +65,9 @@ public:
     // Static utility for drawing menu bar background
     static void drawMenuBar(UnicodeBuffer& buffer, int y, int termWidth);
     
+    // Collision detection and avoidance
+    static void adjustMenuPositions(std::vector<std::shared_ptr<DropdownMenu>>& menus, int termWidth);
+    
     // State management
     void show() { visible = true; }
     void hide() { visible = false; menuOpen = false; }
@@ -72,8 +75,15 @@ public:
     bool isOpen() const { return menuOpen; }
     void close() { menuOpen = false; selectedIndex = -1; }
     
-    // Position management
+    // Position management  
     void setPosition(int newX, int newY) { x = newX; y = newY; calculateDimensions(); }
+    
+    // Position and dimension access for collision detection
+    int getMenuX() const { return x; }
+    int getMenuY() const { return triggerY + 1; }
+    int getMenuWidth() const { return width; }
+    int getMenuHeight() const { return height; }
+    void setMenuX(int newX) { x = newX; triggerX = newX; }
     void setTitle(const std::string& newTitle) { title = newTitle; calculateDimensions(); }
     
     // Getters
@@ -81,4 +91,5 @@ public:
     int getY() const { return y; }
     int getWidth() const { return width; }
     int getHeight() const { return height; }
+    int getSelectedIndex() const { return selectedIndex; }
 };

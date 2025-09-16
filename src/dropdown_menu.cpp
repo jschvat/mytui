@@ -1,5 +1,6 @@
 #include "../include/dropdown_menu.h"
 #include <algorithm>
+#include <memory>
 
 DropdownMenu::DropdownMenu(int x, int y, const std::string& title)
     : x(x), y(y), title(title), visible(true), active(false), 
@@ -102,40 +103,29 @@ void DropdownMenu::drawMenu(UnicodeBuffer& buffer) {
                 textColor = disabledColor;
             }
             
-            // Draw highlighted background for entire row including borders
+            // Draw highlighted background for content area (excluding borders)
             if (i == selectedIndex && item.enabled) {
-                // Highlight the entire row width including borders
-                for (int col = 0; col < width; col++) {
-                    std::string currentChar = " ";
-                    if (col == 0) {
-                        currentChar = Unicode::VERTICAL;  // Left border
-                    } else if (col == width - 1) {
-                        currentChar = Unicode::VERTICAL;  // Right border
-                    }
-                    buffer.setCell(x + col, itemY, currentChar, selectedColor);
+                // Highlight the content area between borders (x+1 to x+width-2)
+                for (int col = 1; col < width - 1; col++) {
+                    buffer.setCell(x + col, itemY, " ", selectedColor);
                 }
             }
             
-            // Draw item text (only if not already highlighted)
-            if (!(i == selectedIndex && item.enabled)) {
-                std::string displayText = "  " + item.text;
-                buffer.drawStringClipped(x + 1, itemY, displayText, textColor, x + width - 2);
-                
-                // Draw shortcut key if present (right-aligned)
-                if (!item.shortcut.empty()) {
-                    int shortcutX = x + width - item.shortcut.length() - 3;  // Right-align with padding
-                    buffer.drawStringClipped(shortcutX, itemY, item.shortcut, textColor, x + width - 2);
-                }
-            } else {
-                // Draw text over highlighted background
-                std::string displayText = "  " + item.text;
-                buffer.drawStringClipped(x + 1, itemY, displayText, selectedColor, x + width - 2);
-                
-                // Draw shortcut key if present (right-aligned)
-                if (!item.shortcut.empty()) {
-                    int shortcutX = x + width - item.shortcut.length() - 3;  // Right-align with padding
-                    buffer.drawStringClipped(shortcutX, itemY, item.shortcut, selectedColor, x + width - 2);
-                }
+            // Draw item text
+            std::string displayText = "  " + item.text;
+            std::string finalTextColor = textColor;
+            
+            // Use selected color for highlighted items
+            if (i == selectedIndex && item.enabled) {
+                finalTextColor = selectedColor;
+            }
+            
+            buffer.drawStringClipped(x + 1, itemY, displayText, finalTextColor, x + width - 2);
+            
+            // Draw shortcut key if present (right-aligned)
+            if (!item.shortcut.empty()) {
+                int shortcutX = x + width - item.shortcut.length() - 3;  // Right-align with padding
+                buffer.drawStringClipped(shortcutX, itemY, item.shortcut, finalTextColor, x + width - 2);
             }
         }
         itemY++;
@@ -156,9 +146,7 @@ bool DropdownMenu::triggerContains(int mx, int my) const {
 bool DropdownMenu::menuContains(int mx, int my) const {
     if (!menuOpen) return false;
     int menuY = triggerY + 1;
-    // Use the same adjustment logic as in updateMouse for consistency
-    int adjustedX = x;
-    return mx >= adjustedX && mx < adjustedX + width && my >= menuY && my < menuY + height;
+    return mx >= x && mx < x + width && my >= menuY && my < menuY + height;
 }
 
 int DropdownMenu::getItemAtPosition(int mx, int my) const {
@@ -178,13 +166,6 @@ int DropdownMenu::getItemAtPosition(int mx, int my) const {
 
 void DropdownMenu::updateMouse(FastMouseHandler& mouse, int termWidth, int termHeight) {
     if (!visible) return;
-    
-    // Adjust menu position if it would go off screen
-    int adjustedX = x;
-    if (x + width > termWidth) {
-        adjustedX = termWidth - width;
-    }
-    if (adjustedX < 0) adjustedX = 0;
     
     int mouseX = mouse.getMouseX();
     int mouseY = mouse.getMouseY();
@@ -245,5 +226,71 @@ void DropdownMenu::drawMenuBar(UnicodeBuffer& buffer, int y, int termWidth) {
     // Draw horizontal menu bar background across entire screen
     for (int x = 0; x < termWidth; x++) {
         buffer.setCell(x, y, " ", barColor);
+    }
+}
+
+// Collision detection and position adjustment for menus
+void DropdownMenu::adjustMenuPositions(std::vector<std::shared_ptr<DropdownMenu>>& menus, int termWidth) {
+    if (menus.empty()) return;
+    
+    // Sort menus by trigger position for left-to-right processing
+    std::sort(menus.begin(), menus.end(), [](const std::shared_ptr<DropdownMenu>& a, const std::shared_ptr<DropdownMenu>& b) {
+        return a->getX() < b->getX();
+    });
+    
+    // Adjust each menu to avoid overlaps
+    for (size_t i = 0; i < menus.size(); i++) {
+        auto& currentMenu = menus[i];
+        if (!currentMenu->isOpen()) continue;
+        
+        // Check collision with previous menu
+        if (i > 0) {
+            auto& prevMenu = menus[i - 1];
+            if (prevMenu->isOpen()) {
+                int prevMenuRight = prevMenu->getMenuX() + prevMenu->getMenuWidth();
+                int currentMenuLeft = currentMenu->getMenuX();
+                
+                // If there's overlap, move current menu to the right
+                if (currentMenuLeft < prevMenuRight) {
+                    int newX = prevMenuRight + 1; // 1 character gap
+                    
+                    // Make sure it doesn't go off screen
+                    if (newX + currentMenu->getMenuWidth() > termWidth) {
+                        // If it would go off screen, try moving it to the left of the trigger
+                        newX = currentMenu->getX() - currentMenu->getMenuWidth();
+                        if (newX < 0) {
+                            // If still doesn't fit, compress the previous menu
+                            newX = std::max(0, termWidth - currentMenu->getMenuWidth());
+                        }
+                    }
+                    
+                    currentMenu->setMenuX(newX);
+                }
+            }
+        }
+        
+        // Check collision with next menu (for right-aligned menus)
+        if (i < menus.size() - 1) {
+            auto& nextMenu = menus[i + 1];
+            if (nextMenu->isOpen()) {
+                int currentMenuRight = currentMenu->getMenuX() + currentMenu->getMenuWidth();
+                int nextMenuLeft = nextMenu->getMenuX();
+                
+                // If there's overlap, try to adjust
+                if (currentMenuRight > nextMenuLeft) {
+                    int availableSpace = nextMenuLeft - currentMenu->getMenuX();
+                    if (availableSpace > 10) { // Minimum usable width
+                        // Could implement menu width compression here if needed
+                    }
+                }
+            }
+        }
+        
+        // Final screen bounds check
+        int menuRight = currentMenu->getMenuX() + currentMenu->getMenuWidth();
+        if (menuRight > termWidth) {
+            int adjustedX = termWidth - currentMenu->getMenuWidth();
+            currentMenu->setMenuX(std::max(0, adjustedX));
+        }
     }
 }

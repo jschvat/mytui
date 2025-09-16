@@ -8,6 +8,7 @@ class DropdownDemoApp : public TUIApplication {
 private:
     std::vector<std::shared_ptr<DropdownMenu>> menus;
     std::string statusMessage;
+    std::string debugInfo;
     
 public:
     DropdownDemoApp() {
@@ -25,7 +26,7 @@ public:
     }
     
     void createMenus() {
-        // File menu
+        // File menu - better spaced across terminal width
         auto fileMenu = std::make_shared<DropdownMenu>(2, 1, "File");
         fileMenu->addItem("New", "Ctrl+N", [this]() { 
             statusMessage = "New file selected!"; 
@@ -41,8 +42,8 @@ public:
             statusMessage = "Exit selected! (Use Q to quit)"; 
         });
         
-        // Edit menu
-        auto editMenu = std::make_shared<DropdownMenu>(10, 1, "Edit");
+        // Edit menu - spaced at ~20% of terminal width
+        auto editMenu = std::make_shared<DropdownMenu>(16, 1, "Edit");
         editMenu->addItem("Cut", "Ctrl+X", [this]() { 
             statusMessage = "Cut selected!"; 
         });
@@ -60,8 +61,8 @@ public:
             statusMessage = "Replace selected!"; 
         });
         
-        // View menu
-        auto viewMenu = std::make_shared<DropdownMenu>(18, 1, "View");
+        // View menu - spaced at ~40% of terminal width
+        auto viewMenu = std::make_shared<DropdownMenu>(32, 1, "View");
         viewMenu->addItem("Zoom In", "Ctrl++", [this]() { 
             statusMessage = "Zoom In selected!"; 
         });
@@ -73,8 +74,8 @@ public:
             statusMessage = "Full Screen selected!"; 
         });
         
-        // Tools menu
-        auto toolsMenu = std::make_shared<DropdownMenu>(26, 1, "Tools");
+        // Tools menu - spaced at ~60% of terminal width
+        auto toolsMenu = std::make_shared<DropdownMenu>(48, 1, "Tools");
         toolsMenu->addItem("Options", [this]() { 
             statusMessage = "Options selected!"; 
         });
@@ -117,9 +118,40 @@ public:
             drawBackground();
             
             // Update and draw menus first (so they appear on top)
+            // Track which menu was just opened to close others
+            std::vector<bool> wasOpen(menus.size());
+            for (size_t i = 0; i < menus.size(); i++) {
+                wasOpen[i] = menus[i]->isOpen();
+            }
+            
             for (auto& menu : menus) {
                 menu->updateMouse(mouse, term_width, term_height);
             }
+            
+            // Debug: Check which menu is open and what selectedIndex is
+            debugInfo = "";
+            for (size_t i = 0; i < menus.size(); i++) {
+                if (menus[i]->isOpen()) {
+                    debugInfo = " | Menu " + std::to_string(i) + " selectedIndex: " + std::to_string(menus[i]->getSelectedIndex());
+                    break;
+                }
+            }
+            
+            // Check if any menu just opened and close others
+            for (size_t i = 0; i < menus.size(); i++) {
+                if (!wasOpen[i] && menus[i]->isOpen()) {
+                    // This menu just opened, close all others
+                    for (size_t j = 0; j < menus.size(); j++) {
+                        if (j != i && menus[j]->isOpen()) {
+                            menus[j]->close();
+                        }
+                    }
+                    break; // Only one menu can open per frame
+                }
+            }
+            
+            // Adjust menu positions to prevent overlap (simplified since only one menu can be open)
+            DropdownMenu::adjustMenuPositions(menus, term_width);
             
             // Update windows
             for (auto& window : windows) {
@@ -177,8 +209,17 @@ private:
             buffer->setCell(i, term_height - 1, " ", Color::BLACK + Color::BG_BRIGHT_CYAN);
         }
         
-        // Draw status message
-        std::string displayMessage = " " + statusMessage + " | Press Q to quit ";
+        // Get current mouse position for debugging
+        int mouseX = mouse.getMouseX();
+        int mouseY = mouse.getMouseY();
+        bool leftPressed = mouse.isLeftButtonPressed();
+        
+        // Draw status message with mouse debug info
+        std::string displayMessage = " " + statusMessage + 
+                                   " | Mouse: (" + std::to_string(mouseX) + "," + std::to_string(mouseY) + ")" +
+                                   (leftPressed ? " [CLICK]" : "") + 
+                                   debugInfo +
+                                   " | Press Q to quit ";
         buffer->drawStringClipped(0, term_height - 1, displayMessage, 
                                 Color::BLACK + Color::BG_BRIGHT_CYAN, term_width);
     }
