@@ -104,4 +104,12 @@ namespace Unicode {
     const std::string ARROW_DOWN = "v";
     const std::string ARROW_LEFT = "<";
     const std::string ARROW_RIGHT = ">";
+    
+    // Scrollbar components
+    const std::string SCROLLBAR_TRACK = "░";       // Light shade for track
+    const std::string SCROLLBAR_THUMB = "▓";       // Dark shade for thumb
+    const std::string SCROLLBAR_BUTTON_UP = "▲";   // Up arrow
+    const std::string SCROLLBAR_BUTTON_DOWN = "▼"; // Down arrow
+    const std::string SCROLLBAR_BUTTON_LEFT = "◄"; // Left arrow
+    const std::string SCROLLBAR_BUTTON_RIGHT = "►"; // Right arrow
 }

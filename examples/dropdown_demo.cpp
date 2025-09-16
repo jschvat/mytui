@@ -19,8 +19,13 @@ public:
         auto window1 = std::make_shared<Window>(10, 5, 30, 12, "Demo Window 1");
         auto window2 = std::make_shared<Window>(45, 8, 25, 10, "Demo Window 2");
         
+        // Create scrollable test window with sample content
+        auto scrollWindow = std::make_shared<Window>(15, 3, 50, 15, "Scrollable Content");
+        createScrollableContent(scrollWindow);
+        
         addWindow(window1);
         addWindow(window2);
+        addWindow(scrollWindow);
         
         statusMessage = "Click on menu buttons to test dropdown functionality!";
     }
@@ -222,6 +227,52 @@ private:
                                    " | Press Q to quit ";
         buffer->drawStringClipped(0, term_height - 1, displayMessage, 
                                 Color::BLACK + Color::BG_BRIGHT_CYAN, term_width);
+    }
+    
+    void createScrollableContent(std::shared_ptr<Window> window) {
+        std::vector<std::string> content;
+        
+        // Create test content that demonstrates both horizontal and vertical scrolling
+        content.push_back("=== SCROLLABLE WINDOW DEMONSTRATION ===");
+        content.push_back("");
+        content.push_back("This window demonstrates the new scrollbar functionality:");
+        content.push_back("* Vertical scrolling when content exceeds window height");
+        content.push_back("* Horizontal scrolling when lines exceed window width");
+        content.push_back("* Scrollbars only appear when the window is active");
+        content.push_back("* Click on this window to activate scrollbars");
+        content.push_back("");
+        content.push_back("VERTICAL SCROLLING TEST:");
+        content.push_back("Line 1: The quick brown fox jumps over the lazy dog");
+        content.push_back("Line 2: Pack my box with five dozen liquor jugs");
+        content.push_back("Line 3: How vexingly quick daft zebras jump!");
+        content.push_back("Line 4: Waltz, bad nymph, for quick jigs vex");
+        content.push_back("Line 5: Sphinx of black quartz, judge my vow");
+        content.push_back("Line 6: Two driven jocks help fax my big quiz");
+        content.push_back("Line 7: Five quacking zephyrs jolt my wax bed");
+        content.push_back("Line 8: The jay, pig, fox, zebra, and my wolves quack!");
+        content.push_back("Line 9: Blowzy red vixens fight for a quick jump");
+        content.push_back("Line 10: Joaquin Phoenix was quickly amazed by the five boxing wizards");
+        content.push_back("");
+        content.push_back("HORIZONTAL SCROLLING TEST - These lines are intentionally very long:");
+        content.push_back("This is an extremely long line that should definitely exceed the width of most windows and trigger horizontal scrolling when displayed in the TUI interface. It contains enough text to demonstrate the horizontal scrollbar functionality.");
+        content.push_back("Another super long line: ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789 !@#$%^&*()_+-=[]{}|;':\",./<>? This should force horizontal scrolling!");
+        content.push_back("Yet another lengthy line with technical content: The implementation includes calculateContentDimensions(), scrollUp(), scrollDown(), scrollLeft(), scrollRight(), needsVerticalScrollbar(), needsHorizontalScrollbar(), and drawScrollbars() methods for complete scrolling support.");
+        content.push_back("");
+        content.push_back("SCROLLBAR CONTROLS:");
+        content.push_back("* Mouse wheel (if supported) for vertical scrolling");
+        content.push_back("* Arrow keys for directional scrolling");
+        content.push_back("* Click and drag scrollbar thumbs");
+        content.push_back("* Scrollbars automatically size based on content ratio");
+        content.push_back("");
+        content.push_back("MORE CONTENT TO SCROLL:");
+        content.push_back("Line 20: Additional content line");
+        content.push_back("Line 21: Even more content to scroll through");
+        content.push_back("Line 22: Testing vertical scrolling capabilities");
+        content.push_back("Line 23: The scrollbar thumb size reflects content ratio");
+        content.push_back("Line 24: Scrollbar position shows current view location");
+        content.push_back("Line 25: Final line of test content - END");
+        
+        window->setContent(content);
     }
 };
 
