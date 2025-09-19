@@ -289,57 +289,65 @@ public:
             
             drawInstructions();
             
-            // Draw all windows first
+            // Draw windows and their components in z-order to prevent overlap issues
             for (auto& window : windows) {
                 if (window->isVisible()) {
+                    // Draw the window first
                     window->draw(*buffer);
+                    
+                    // Then immediately draw all components belonging to this window
+                    if (window == mainWindow) {
+                        // Draw mainWindow components
+                        if (progressBar) {
+                            progressBar->updateMouse(mouse, term_width, term_height);
+                            progressBar->draw(*buffer);
+                        }
+                        
+                        if (animatedProgress) {
+                            animatedProgress->updateMouse(mouse, term_width, term_height);
+                            animatedProgress->draw(*buffer);
+                        }
+                        
+                        if (checkbox1) {
+                            checkbox1->updateMouse(mouse, term_width, term_height);
+                            checkbox1->draw(*buffer);
+                        }
+                        
+                        if (checkbox2) {
+                            checkbox2->updateMouse(mouse, term_width, term_height);
+                            checkbox2->draw(*buffer);
+                        }
+                        
+                        if (radioButtons) {
+                            radioButtons->updateMouse(mouse, term_width, term_height);
+                            radioButtons->draw(*buffer);
+                        }
+                    }
+                    else if (window == formWindow) {
+                        // Draw formWindow components
+                        if (textInput) {
+                            textInput->updateMouse(mouse, term_width, term_height);
+                            textInput->draw(*buffer);
+                        }
+                        
+                        if (passwordInput) {
+                            passwordInput->updateMouse(mouse, term_width, term_height);
+                            passwordInput->draw(*buffer);
+                        }
+                    }
+                    else if (window == listWindow) {
+                        // Draw listWindow components
+                        if (listBox) {
+                            listBox->updateMouse(mouse, term_width, term_height);
+                            listBox->draw(*buffer);
+                        }
+                        
+                        if (statusBar) {
+                            statusBar->updateMouse(mouse, term_width, term_height);
+                            statusBar->draw(*buffer);
+                        }
+                    }
                 }
-            }
-            
-            // Update and draw UI components
-            if (progressBar) {
-                progressBar->updateMouse(mouse, term_width, term_height);
-                progressBar->draw(*buffer);
-            }
-            
-            if (animatedProgress) {
-                animatedProgress->updateMouse(mouse, term_width, term_height);
-                animatedProgress->draw(*buffer);
-            }
-            
-            if (checkbox1) {
-                checkbox1->updateMouse(mouse, term_width, term_height);
-                checkbox1->draw(*buffer);
-            }
-            
-            if (checkbox2) {
-                checkbox2->updateMouse(mouse, term_width, term_height);
-                checkbox2->draw(*buffer);
-            }
-            
-            if (radioButtons) {
-                radioButtons->updateMouse(mouse, term_width, term_height);
-                radioButtons->draw(*buffer);
-            }
-            
-            if (textInput) {
-                textInput->updateMouse(mouse, term_width, term_height);
-                textInput->draw(*buffer);
-            }
-            
-            if (passwordInput) {
-                passwordInput->updateMouse(mouse, term_width, term_height);
-                passwordInput->draw(*buffer);
-            }
-            
-            if (listBox) {
-                listBox->updateMouse(mouse, term_width, term_height);
-                listBox->draw(*buffer);
-            }
-            
-            if (statusBar) {
-                statusBar->updateMouse(mouse, term_width, term_height);
-                statusBar->draw(*buffer);
             }
             
             // Animate components
