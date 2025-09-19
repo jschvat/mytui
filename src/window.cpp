@@ -1,4 +1,6 @@
 #include "../include/window.h"
+#include "../include/button.h"
+#include "../include/buffer.h"
 #include <algorithm>
 
 Window::Window(int x, int y, int w, int h, const std::string& title)
@@ -69,8 +71,14 @@ void Window::draw(UnicodeBuffer& buffer) {
                               dragging ? " " + Unicode::TRIANGLE_RIGHT + " " + title + " " : 
                               " " + Unicode::DIAMOND + " " + title + " ";
     
-    int titleLen = std::min((int)displayTitle.length(), w - 8);
-    buffer.drawStringClipped(x + 2, y, displayTitle.substr(0, titleLen), titleFgColor + titleBgColor, x + w - 4);
+    int titleDisplayWidth = UnicodeUtils::getDisplayWidth(displayTitle);
+    int maxTitleWidth = w - 8;
+    
+    if (titleDisplayWidth > maxTitleWidth) {
+        displayTitle = UnicodeUtils::substring(displayTitle, 0, maxTitleWidth);
+    }
+    
+    buffer.drawStringClipped(x + 2, y, displayTitle, titleFgColor + titleBgColor, x + w - 4);
     
     // Close button with bracket style [█] with red background
     buffer.setCell(x + w - 4, y, "[", titleFgColor + titleBgColor);
@@ -101,8 +109,9 @@ void Window::draw(UnicodeBuffer& buffer) {
                 std::string line = content[contentRow];
                 
                 // Apply horizontal scroll
-                if (scrollX < (int)line.length()) {
-                    std::string visiblePart = line.substr(scrollX);
+                int lineDisplayWidth = UnicodeUtils::getDisplayWidth(line);
+                if (scrollX < lineDisplayWidth) {
+                    std::string visiblePart = UnicodeUtils::substring(line, scrollX, contentAreaWidth);
                     buffer.drawStringClipped(x + 1, y + 1 + row, visiblePart, contentColor, x + 1 + contentAreaWidth);
                 }
             }
@@ -141,6 +150,11 @@ void Window::draw(UnicodeBuffer& buffer) {
         drawScrollbars(buffer);
     }
     
+    // Draw child buttons
+    for (auto& button : buttons) {
+        button->draw(buffer);
+    }
+    
     // Resize handle in border corner (bottom-right)
     if (w > 6 && h > 3) {
         buffer.setCell(x + w - 1, y + h - 1, Unicode::RESIZE_HANDLE, borderColor);
@@ -173,8 +187,25 @@ void Window::updateMouse(FastMouseHandler& mouse, int termWidth, int termHeight)
     int mouseY = mouse.getMouseY();
     bool leftPressed = mouse.isLeftButtonPressed();
     
+    // Store previous state for event generation
+    int oldScrollX = scrollX;
+    int oldScrollY = scrollY;
+    bool wasActive = active;
+    
+    // Generate mouse enter/leave events
+    generateMouseEvents(mouse);
+    
+    // Update button mouse interactions first (highest priority)
+    for (auto& button : buttons) {
+        button->updateMouse(mouse);
+    }
+    
     if (leftPressed && !wasLeftPressed) {
-        if (closeButtonContains(mouseX, mouseY)) {
+        // Check if click was on a button first
+        if (getButtonAt(mouseX, mouseY)) {
+            // Button handled the click, don't process other window interactions
+            active = true;
+        } else if (closeButtonContains(mouseX, mouseY)) {
             visible = false;
         } else if (resizeHandleContains(mouseX, mouseY)) {
             active = true;
@@ -221,9 +252,12 @@ void Window::updateMouse(FastMouseHandler& mouse, int termWidth, int termHeight)
         int newY = std::max(0, std::min(mouseY - dragOffsetY, termHeight - h - 2));
         
         if (newX != x || newY != y) {
+            lastX = x;
+            lastY = y;
             x = newX;
             y = newY;
             moveCount++;
+            generateWindowEvent(EventType::WINDOW_MOVE);
         }
     } else if (leftPressed && resizing) {
         int newW = std::max((int)MIN_WIDTH, mouseX - x + 1);
@@ -233,14 +267,27 @@ void Window::updateMouse(FastMouseHandler& mouse, int termWidth, int termHeight)
         newH = std::min(newH, termHeight - y);
         
         if (newW != w || newH != h) {
+            lastW = w;
+            lastH = h;
             w = newW;
             h = newH;
             resizeCount++;
+            generateWindowEvent(EventType::WINDOW_RESIZE);
         }
     } else if (leftPressed && (draggingVerticalThumb || draggingHorizontalThumb)) {
         // Handle scrollbar thumb dragging
         handleScrollbarDrag(mouseX, mouseY);
     }
+    
+    // Generate focus/blur events when window becomes active/inactive
+    if (active && !wasActive) {
+        generateWindowEvent(EventType::WINDOW_FOCUS);
+    } else if (!active && wasActive) {
+        generateWindowEvent(EventType::WINDOW_BLUR);
+    }
+    
+    // Generate scroll events if scroll position changed
+    generateScrollEvents(oldScrollX, oldScrollY);
     
     wasLeftPressed = leftPressed;
 }
@@ -271,7 +318,7 @@ void Window::calculateContentDimensions() {
     contentWidth = 0;
     
     for (const auto& line : content) {
-        contentWidth = std::max(contentWidth, (int)line.length());
+        contentWidth = std::max(contentWidth, UnicodeUtils::getDisplayWidth(line));
     }
 }
 
@@ -573,5 +620,117 @@ void Window::handleScrollbarDrag(int mx, int my) {
                 scrollX = std::max(0, std::min(contentWidth - trackWidth, newScrollX));
             }
         }
+    }
+}
+
+// Button management methods
+void Window::addButton(std::shared_ptr<Button> button) {
+    if (button) {
+        button->setParentWindow(shared_from_this());
+        buttons.push_back(button);
+    }
+}
+
+void Window::removeButton(std::shared_ptr<Button> button) {
+    auto it = std::find(buttons.begin(), buttons.end(), button);
+    if (it != buttons.end()) {
+        (*it)->setParentWindow(nullptr);
+        buttons.erase(it);
+    }
+}
+
+void Window::clearButtons() {
+    for (auto& button : buttons) {
+        button->setParentWindow(nullptr);
+    }
+    buttons.clear();
+}
+
+std::shared_ptr<Button> Window::getButtonAt(int mx, int my) const {
+    for (auto& button : buttons) {
+        if (button->contains(mx, my)) {
+            return button;
+        }
+    }
+    return nullptr;
+}
+
+// Coordinate conversion for child components
+int Window::getContentX() const {
+    return x + 1; // Inside left border
+}
+
+int Window::getContentY() const {
+    return y + 1; // Inside top border
+}
+
+int Window::getContentWidth() const {
+    int width = w - 2; // Account for left/right borders
+    if (needsVerticalScrollbar()) width--; // Account for scrollbar
+    return std::max(0, width);
+}
+
+int Window::getContentHeight() const {
+    int height = h - 2; // Account for top/bottom borders
+    if (needsHorizontalScrollbar()) height--; // Account for scrollbar
+    return std::max(0, height);
+}
+
+// Event generation methods
+void Window::generateWindowEvent(EventType type) {
+    auto self = shared_from_this();
+    auto event = std::unique_ptr<WindowEvent>(new WindowEvent(type, self, x, y, w, h));
+    
+    // Set previous position/size for move/resize events
+    if (type == EventType::WINDOW_MOVE) {
+        event->prevX = lastX;
+        event->prevY = lastY;
+        if (onMove) onMove(*event);
+    } else if (type == EventType::WINDOW_RESIZE) {
+        event->prevWidth = lastW;
+        event->prevHeight = lastH;
+        if (onResize) onResize(*event);
+    } else if (type == EventType::WINDOW_FOCUS && onFocus) {
+        onFocus(*event);
+    } else if (type == EventType::WINDOW_BLUR && onBlur) {
+        onBlur(*event);
+    } else if (type == EventType::WINDOW_CLOSE && onClose) {
+        onClose(*event);
+    }
+    
+    // Also dispatch to global event manager
+    EventManager::getInstance().dispatchEvent(std::move(event));
+}
+
+void Window::generateMouseEvents(const FastMouseHandler& mouse) {
+    int mouseX = mouse.getMouseX();
+    int mouseY = mouse.getMouseY();
+    bool mouseOver = contains(mouseX, mouseY);
+    
+    // Generate mouse enter/leave events
+    if (mouseOver && !wasMouseOver) {
+        auto enterEvent = std::unique_ptr<MouseEvent>(new MouseEvent(EventType::MOUSE_ENTER, mouseX, mouseY));
+        if (onMouseEnter) onMouseEnter(*enterEvent);
+        EventManager::getInstance().dispatchEvent(std::move(enterEvent));
+        wasMouseOver = true;
+    } else if (!mouseOver && wasMouseOver) {
+        auto leaveEvent = std::unique_ptr<MouseEvent>(new MouseEvent(EventType::MOUSE_LEAVE, mouseX, mouseY));
+        if (onMouseLeave) onMouseLeave(*leaveEvent);
+        EventManager::getInstance().dispatchEvent(std::move(leaveEvent));
+        wasMouseOver = false;
+    }
+}
+
+void Window::generateScrollEvents(int oldScrollX, int oldScrollY) {
+    if (scrollX != oldScrollX || scrollY != oldScrollY) {
+        auto self = shared_from_this();
+        auto scrollEvent = std::unique_ptr<ScrollEvent>(new ScrollEvent(
+            EventType::SCROLL_CHANGE, self, scrollX, scrollY, 
+            scrollX - oldScrollX, scrollY - oldScrollY, 
+            scrollY != oldScrollY  // true if vertical scroll changed
+        ));
+        
+        if (onScroll) onScroll(*scrollEvent);
+        EventManager::getInstance().dispatchEvent(std::move(scrollEvent));
     }
 }

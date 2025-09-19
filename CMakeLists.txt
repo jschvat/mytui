@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 project(ModernTUI VERSION 1.0.0 LANGUAGES CXX)
 
 # Set C++ standard
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -65,6 +65,15 @@ set(TUI_SOURCES
     src/tui_app.cpp
     src/window.cpp
     src/dropdown_menu.cpp
+    src/button.cpp
+    src/event_system.cpp
+    src/progress_bar.cpp
+    src/checkbox.cpp
+    src/text_input.cpp
+    src/password_input.cpp
+    src/radio_buttons.cpp
+    src/status_bar.cpp
+    src/list_box.cpp
     src/asm_optimized.cpp
 )
 
@@ -75,6 +84,8 @@ set(TUI_HEADERS
     include/tui_app.h
     include/window.h
     include/dropdown_menu.h
+    include/button.h
+    include/event_system.h
     include/asm_optimized.h
 )
 
@@ -113,6 +124,18 @@ if(BUILD_EXAMPLES)
     # Dropdown menu demo
     add_executable(dropdown_demo examples/dropdown_demo.cpp)
     target_link_libraries(dropdown_demo tui)
+    
+    # Simple button component demo
+    add_executable(simple_button_demo examples/simple_button_demo.cpp)
+    target_link_libraries(simple_button_demo tui)
+    
+    # Event system demo
+    add_executable(event_system_demo examples/event_system_demo.cpp)
+    target_link_libraries(event_system_demo tui)
+    
+    # UI Components demo
+    add_executable(ui_components_demo examples/ui_components_demo.cpp)
+    target_link_libraries(ui_components_demo tui)
     
     message(STATUS "Examples: enabled")
 else()

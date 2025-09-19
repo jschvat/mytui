@@ -1,16 +1,18 @@
 #include "../include/dropdown_menu.h"
+#include "../include/buffer.h"
 #include <algorithm>
 #include <memory>
 
 DropdownMenu::DropdownMenu(int x, int y, const std::string& title)
     : x(x), y(y), title(title), visible(true), active(false), 
-      selectedIndex(-1), wasLeftPressed(false), menuOpen(false) {
+      selectedIndex(-1), wasLeftPressed(false), menuOpen(false),
+      lastHoveredIndex(-1), wasMenuOpen(false), isApplicationMenuBar(false), menuBarWidth(0) {
     calculateDimensions();
 }
 
 void DropdownMenu::calculateDimensions() {
     // Calculate trigger dimensions
-    triggerWidth = title.length() + 6;  // Add more padding, no dropdown arrow
+    triggerWidth = UnicodeUtils::getDisplayWidth(title) + 6;  // Add more padding, no dropdown arrow
     triggerHeight = 1;
     triggerX = x;
     triggerY = y;
@@ -19,9 +21,9 @@ void DropdownMenu::calculateDimensions() {
     width = triggerWidth + 8;  // Add extra width
     for (const auto& item : items) {
         if (!item.separator) {
-            int itemWidth = item.text.length() + 8;  // Base padding
+            int itemWidth = UnicodeUtils::getDisplayWidth(item.text) + 8;  // Base padding
             if (!item.shortcut.empty()) {
-                itemWidth += item.shortcut.length() + 4;  // Extra space for shortcut + padding
+                itemWidth += UnicodeUtils::getDisplayWidth(item.shortcut) + 4;  // Extra space for shortcut + padding
             }
             width = std::max(width, itemWidth);
         }
@@ -60,6 +62,19 @@ void DropdownMenu::drawTrigger(UnicodeBuffer& buffer) {
     
     // Draw trigger button without dropdown arrow, with more padding
     std::string displayText = "  " + title + "  ";
+    
+    if (isApplicationMenuBar) {
+        // For application menu bars, we need to ensure the background stays consistent
+        // First, fill the trigger area with the menu bar background if not active
+        if (!active) {
+            std::string menuBarColor = Color::BRIGHT_WHITE + Color::BG_BLACK;
+            for (int i = 0; i < triggerWidth; i++) {
+                buffer.setCell(triggerX + i, triggerY, " ", menuBarColor);
+            }
+            triggerColor = menuBarColor; // Use menu bar colors for non-active state
+        }
+    }
+    
     buffer.drawString(triggerX, triggerY, displayText, triggerColor);
 }
 
@@ -124,7 +139,7 @@ void DropdownMenu::drawMenu(UnicodeBuffer& buffer) {
             
             // Draw shortcut key if present (right-aligned)
             if (!item.shortcut.empty()) {
-                int shortcutX = x + width - item.shortcut.length() - 3;  // Right-align with padding
+                int shortcutX = x + width - UnicodeUtils::getDisplayWidth(item.shortcut) - 3;  // Right-align with padding
                 buffer.drawStringClipped(shortcutX, itemY, item.shortcut, finalTextColor, x + width - 2);
             }
         }
@@ -135,8 +150,22 @@ void DropdownMenu::drawMenu(UnicodeBuffer& buffer) {
 void DropdownMenu::draw(UnicodeBuffer& buffer) {
     if (!visible) return;
     
+    // Note: Application menu bar background is now drawn by drawApplicationMenuBars()
+    // for efficiency, so we don't draw it here individually
+    
     drawTrigger(buffer);
     drawMenu(buffer);
+}
+
+void DropdownMenu::drawApplicationMenuBar(UnicodeBuffer& buffer) {
+    if (!isApplicationMenuBar || menuBarWidth <= 0) return;
+    
+    std::string barColor = Color::BRIGHT_WHITE + Color::BG_BLACK;
+    
+    // Draw horizontal menu bar background across the specified width
+    for (int i = 0; i < menuBarWidth; i++) {
+        buffer.setCell(i, triggerY, " ", barColor);
+    }
 }
 
 bool DropdownMenu::triggerContains(int mx, int my) const {
@@ -171,6 +200,10 @@ void DropdownMenu::updateMouse(FastMouseHandler& mouse, int termWidth, int termH
     int mouseY = mouse.getMouseY();
     bool leftPressed = mouse.isLeftButtonPressed();
     
+    // Store previous state for event generation
+    wasMenuOpen = menuOpen;
+    int prevHoveredIndex = lastHoveredIndex;
+    
     // Reset active state
     active = false;
     
@@ -178,20 +211,32 @@ void DropdownMenu::updateMouse(FastMouseHandler& mouse, int termWidth, int termH
         // Mouse clicked
         if (triggerContains(mouseX, mouseY)) {
             // Toggle menu
+            bool wasOpen = menuOpen;
             menuOpen = !menuOpen;
             selectedIndex = -1;
             active = true;
+            
+            // Generate menu open/close events
+            if (!wasOpen && menuOpen) {
+                generateMenuEvent(EventType::MENU_OPEN);
+            } else if (wasOpen && !menuOpen) {
+                generateMenuEvent(EventType::MENU_CLOSE);
+            }
         } else if (menuOpen) {
             int itemIndex = getItemAtPosition(mouseX, mouseY);
             if (itemIndex >= 0) {
                 // Item clicked
+                generateItemEvent(EventType::MENU_ITEM_CLICK, itemIndex, mouseX, mouseY);
+                generateItemEvent(EventType::MENU_ITEM_SELECT, itemIndex, mouseX, mouseY);
                 executeCallback(itemIndex);
                 menuOpen = false;
                 selectedIndex = -1;
+                generateMenuEvent(EventType::MENU_CLOSE);
             } else if (!menuContains(mouseX, mouseY)) {
                 // Clicked outside menu - close it
                 menuOpen = false;
                 selectedIndex = -1;
+                generateMenuEvent(EventType::MENU_CLOSE);
             }
         }
     } else if (menuOpen) {
@@ -205,6 +250,25 @@ void DropdownMenu::updateMouse(FastMouseHandler& mouse, int termWidth, int termH
     } else if (triggerContains(mouseX, mouseY)) {
         // Hover over trigger
         active = true;
+    }
+    
+    // Update hover tracking and generate item hover/leave events
+    if (menuOpen) {
+        int currentHoverIndex = getItemAtPosition(mouseX, mouseY);
+        lastHoveredIndex = currentHoverIndex;
+        
+        // Generate hover events
+        if (currentHoverIndex != prevHoveredIndex) {
+            // Item hover changed
+            if (prevHoveredIndex >= 0 && prevHoveredIndex < static_cast<int>(items.size())) {
+                generateItemEvent(EventType::MENU_ITEM_LEAVE, prevHoveredIndex, mouseX, mouseY);
+            }
+            if (currentHoverIndex >= 0 && currentHoverIndex < static_cast<int>(items.size())) {
+                generateItemEvent(EventType::MENU_ITEM_HOVER, currentHoverIndex, mouseX, mouseY);
+            }
+        }
+    } else {
+        lastHoveredIndex = -1;
     }
     
     wasLeftPressed = leftPressed;
@@ -226,6 +290,34 @@ void DropdownMenu::drawMenuBar(UnicodeBuffer& buffer, int y, int termWidth) {
     // Draw horizontal menu bar background across entire screen
     for (int x = 0; x < termWidth; x++) {
         buffer.setCell(x, y, " ", barColor);
+    }
+}
+
+// Static utility for setting up application menu bars
+void DropdownMenu::setupApplicationMenuBar(std::vector<std::shared_ptr<DropdownMenu>>& menus, int y, int termWidth) {
+    for (auto& menu : menus) {
+        if (menu && menu->getY() == y) {
+            menu->setAsApplicationMenuBar(true, termWidth);
+        }
+    }
+}
+
+// Static utility for drawing application menu bars efficiently
+void DropdownMenu::drawApplicationMenuBars(std::vector<std::shared_ptr<DropdownMenu>>& menus, UnicodeBuffer& buffer, int termWidth) {
+    // Find all unique Y positions where we have application menu bars
+    std::vector<int> menuBarRows;
+    for (const auto& menu : menus) {
+        if (menu && menu->isAppMenuBar() && menu->isVisible()) {
+            int row = menu->getY();
+            if (std::find(menuBarRows.begin(), menuBarRows.end(), row) == menuBarRows.end()) {
+                menuBarRows.push_back(row);
+            }
+        }
+    }
+    
+    // Draw the background for each unique row
+    for (int row : menuBarRows) {
+        drawMenuBar(buffer, row, termWidth);
     }
 }
 
@@ -293,4 +385,64 @@ void DropdownMenu::adjustMenuPositions(std::vector<std::shared_ptr<DropdownMenu>
             currentMenu->setMenuX(std::max(0, adjustedX));
         }
     }
+}
+
+// Event generation methods
+void DropdownMenu::generateMenuEvent(EventType type) {
+    auto self = std::shared_ptr<DropdownMenu>(this, [](DropdownMenu*) {}); // Non-owning shared_ptr
+    auto event = std::unique_ptr<MenuEvent>(new MenuEvent(type, self, title));
+    
+    // Call local callbacks first
+    switch (type) {
+        case EventType::MENU_OPEN:
+            if (onMenuOpen) onMenuOpen(*event);
+            break;
+        case EventType::MENU_CLOSE:
+            if (onMenuClose) onMenuClose(*event);
+            break;
+        default:
+            break;
+    }
+    
+    // Dispatch to global event manager
+    EventManager::getInstance().dispatchEvent(std::move(event));
+}
+
+void DropdownMenu::generateItemEvent(EventType type, int itemIndex, int mouseX, int mouseY) {
+    if (itemIndex < 0 || itemIndex >= static_cast<int>(items.size())) {
+        return; // Invalid index
+    }
+    
+    auto self = std::shared_ptr<DropdownMenu>(this, [](DropdownMenu*) {}); // Non-owning shared_ptr
+    const MenuItem& item = items[itemIndex];
+    
+    auto event = std::unique_ptr<MenuEvent>(new MenuEvent(
+        type, self, title, itemIndex, item.text, item.shortcut));
+    
+    // Set mouse position if provided
+    if (mouseX != 0 || mouseY != 0) {
+        event->mouseX = mouseX;
+        event->mouseY = mouseY;
+    }
+    
+    // Call local callbacks first
+    switch (type) {
+        case EventType::MENU_ITEM_HOVER:
+            if (onItemHover) onItemHover(*event);
+            break;
+        case EventType::MENU_ITEM_LEAVE:
+            if (onItemLeave) onItemLeave(*event);
+            break;
+        case EventType::MENU_ITEM_SELECT:
+            if (onItemSelect) onItemSelect(*event);
+            break;
+        case EventType::MENU_ITEM_CLICK:
+            if (onItemClick) onItemClick(*event);
+            break;
+        default:
+            break;
+    }
+    
+    // Dispatch to global event manager
+    EventManager::getInstance().dispatchEvent(std::move(event));
 }

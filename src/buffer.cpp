@@ -1,6 +1,48 @@
 #include "../include/buffer.h"
+#include "../include/asm_optimized.h"
 #include <iostream>
 #include <sstream>
+#include <algorithm>
+
+// Unicode utility functions
+int UnicodeUtils::getDisplayWidth(const std::string& text) {
+    // Simple heuristic: count characters, not bytes
+    // For UTF-8, count the number of character starts (not continuation bytes)
+    int width = 0;
+    for (size_t i = 0; i < text.length(); i++) {
+        // UTF-8 continuation bytes have the pattern 10xxxxxx
+        if ((text[i] & 0xC0) != 0x80) {
+            width++;
+        }
+    }
+    return width;
+}
+
+std::vector<std::string> UnicodeUtils::splitIntoChars(const std::string& text) {
+    std::vector<std::string> chars;
+    for (size_t i = 0; i < text.length(); ) {
+        // Find the end of this UTF-8 character
+        size_t charStart = i;
+        i++;
+        while (i < text.length() && (text[i] & 0xC0) == 0x80) {
+            i++;
+        }
+        chars.push_back(text.substr(charStart, i - charStart));
+    }
+    return chars;
+}
+
+std::string UnicodeUtils::substring(const std::string& text, int start, int length) {
+    auto chars = splitIntoChars(text);
+    if (start >= (int)chars.size()) return "";
+    
+    std::string result;
+    int end = std::min(start + length, (int)chars.size());
+    for (int i = start; i < end; i++) {
+        result += chars[i];
+    }
+    return result;
+}
 
 UnicodeBuffer::UnicodeBuffer(int w, int h) : width(w), height(h) {
     cells.resize(height, std::vector<std::string>(width, " "));
@@ -8,10 +50,16 @@ UnicodeBuffer::UnicodeBuffer(int w, int h) : width(w), height(h) {
 }
 
 void UnicodeBuffer::clear() {
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            cells[y][x] = " ";
-            colors[y][x] = Color::RESET;
+    // Use ASM optimization for larger buffers
+    if (ASMOptimized::has_avx2() && width * height > 200) {
+        ASMOptimized::fast_buffer_clear_optimized(cells, colors, width, height);
+    } else {
+        // Standard implementation for small buffers
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                cells[y][x] = " ";
+                colors[y][x] = Color::RESET;
+            }
         }
     }
 }
@@ -24,14 +72,16 @@ void UnicodeBuffer::setCell(int x, int y, const std::string& ch, const std::stri
 }
 
 void UnicodeBuffer::drawString(int x, int y, const std::string& text, const std::string& color) {
-    for (size_t i = 0; i < text.length() && x + (int)i < width; i++) {
-        setCell(x + (int)i, y, std::string(1, text[i]), color);
+    auto chars = UnicodeUtils::splitIntoChars(text);
+    for (size_t i = 0; i < chars.size() && x + (int)i < width; i++) {
+        setCell(x + (int)i, y, chars[i], color);
     }
 }
 
 void UnicodeBuffer::drawStringClipped(int x, int y, const std::string& text, const std::string& color, int maxX) {
-    for (size_t i = 0; i < text.length() && x + (int)i < width && x + (int)i < maxX; i++) {
-        setCell(x + (int)i, y, std::string(1, text[i]), color);
+    auto chars = UnicodeUtils::splitIntoChars(text);
+    for (size_t i = 0; i < chars.size() && x + (int)i < width && x + (int)i < maxX; i++) {
+        setCell(x + (int)i, y, chars[i], color);
     }
 }
 
@@ -82,6 +132,23 @@ void UnicodeBuffer::drawBox(int x, int y, int w, int h, const std::string& color
     setCell(x + w - 1, y + h - 1, bottomRight, color);
 }
 
+void UnicodeBuffer::fillRect(int x, int y, int w, int h, const std::string& character, const std::string& color) {
+    // Use ASM optimization for larger rectangles
+    if (ASMOptimized::has_avx2() && w * h > 32) {
+        ASMOptimized::fast_rect_fill(cells, colors, x, y, w, h, character, color);
+    } else {
+        // Standard implementation for small rectangles
+        for (int row = y; row < y + h; row++) {
+            for (int col = x; col < x + w; col++) {
+                if (row >= 0 && row < height && col >= 0 && col < width) {
+                    cells[row][col] = character;
+                    colors[row][col] = color;
+                }
+            }
+        }
+    }
+}
+
 void UnicodeBuffer::render() {
     std::ostringstream output;
     output << "\033[H";
@@ -90,7 +157,11 @@ void UnicodeBuffer::render() {
     
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            if (colors[y][x] != currentColor) {
+            // Use SIMD-optimized string comparison for color changes
+            if (ASMOptimized::has_sse2() && !ASMOptimized::fast_string_equal(colors[y][x], currentColor)) {
+                output << colors[y][x];
+                currentColor = colors[y][x];
+            } else if (!ASMOptimized::has_sse2() && colors[y][x] != currentColor) {
                 output << colors[y][x];
                 currentColor = colors[y][x];
             }
