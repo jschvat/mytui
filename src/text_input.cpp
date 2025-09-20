@@ -1,5 +1,6 @@
 #include "../include/text_input.h"
 #include "../include/window.h"
+#include "../include/component_clipping.h"
 #include <algorithm>
 #include <cctype>
 
@@ -403,46 +404,80 @@ void TextInput::draw(UnicodeBuffer& buffer) {
     int absX = parentWindow->x + x;
     int absY = parentWindow->y + y;
     
+    // Calculate window content boundaries (same as ProgressBar)
+    int windowContentX = parentWindow->getContentX();
+    int windowContentY = parentWindow->getContentY();
+    int windowContentWidth = parentWindow->getContentWidth();
+    int windowContentHeight = parentWindow->getContentHeight();
+    
+    // Clip component to window content area
+    int clipStartX = std::max(absX, windowContentX);
+    int clipStartY = std::max(absY, windowContentY);
+    int clipEndX = std::min(absX + width, windowContentX + windowContentWidth);
+    int clipEndY = std::min(absY + height, windowContentY + windowContentHeight);
+    
+    // Don't draw if completely outside window
+    if (clipStartX >= clipEndX || clipStartY >= clipEndY) return;
+    
     // Determine border color
     std::string currentBorderColor = focused ? focusedBorderColor : borderColor;
     
-    // Draw border
+    // Draw border with clipping (same logic as ProgressBar)
     for (int row = 0; row < height; row++) {
-        buffer.setCell(absX, absY + row, "|", currentBorderColor);
-        buffer.setCell(absX + width - 1, absY + row, "|", currentBorderColor);
+        int drawY = absY + row;
+        if (drawY < clipStartY || drawY >= clipEndY) continue;
         
-        // Fill background
+        // Left border
+        int leftX = absX;
+        if (leftX >= clipStartX && leftX < clipEndX) {
+            buffer.setCell(leftX, drawY, "|", currentBorderColor);
+        }
+        
+        // Right border
+        int rightX = absX + width - 1;
+        if (rightX >= clipStartX && rightX < clipEndX) {
+            buffer.setCell(rightX, drawY, "|", currentBorderColor);
+        }
+        
+        // Fill background with clipping
         for (int col = 1; col < width - 1; col++) {
-            buffer.setCell(absX + col, absY + row, backgroundFill, textColor);
+            int drawX = absX + col;
+            if (drawX < clipStartX || drawX >= clipEndX) continue;
+            buffer.setCell(drawX, drawY, backgroundFill, textColor);
         }
     }
     
-    // Draw text content
+    // Draw text content with clipping
     std::string visibleText = getVisibleText();
     std::string displayText = text.empty() && !focused ? placeholder : visibleText;
     std::string displayColor = text.empty() && !focused ? placeholderColor : textColor;
     
     if (!displayText.empty()) {
-        buffer.drawStringClipped(absX + 1, absY, displayText, displayColor, absX + width - 1);
+        int textClipEnd = std::min(absX + width - 1, clipEndX);
+        buffer.drawStringClipped(absX + 1, absY, displayText, displayColor, textClipEnd);
     }
     
-    // Draw selection
+    // Draw selection with clipping
     if (hasSelection && focused) {
         int visibleSelStart = std::max(0, selectionStart - scrollOffset);
         int visibleSelEnd = std::min((int)visibleText.length(), selectionEnd - scrollOffset);
         
         for (int i = visibleSelStart; i < visibleSelEnd; i++) {
             if (i >= 0 && i < (int)visibleText.length()) {
-                std::string ch = visibleText.substr(i, 1);
-                buffer.setCell(absX + 1 + i, absY, ch, selectionColor);
+                int drawX = absX + 1 + i;
+                if (drawX >= clipStartX && drawX < clipEndX && absY >= clipStartY && absY < clipEndY) {
+                    std::string ch = visibleText.substr(i, 1);
+                    buffer.setCell(drawX, absY, ch, selectionColor);
+                }
             }
         }
     }
     
-    // Draw cursor
+    // Draw cursor with clipping
     if (focused && !hasSelection) {
         int cursorX = absX + 1 + (cursorPos - scrollOffset);
-        if (cursorX >= absX + 1 && cursorX < absX + width - 1) {
+        if (cursorX >= absX + 1 && cursorX < absX + width - 1 && 
+            cursorX >= clipStartX && cursorX < clipEndX && absY >= clipStartY && absY < clipEndY) {
             std::string cursorChar = (cursorPos < (int)visibleText.length()) ? 
                                    visibleText.substr(cursorPos - scrollOffset, 1) : " ";
             buffer.setCell(cursorX, absY, cursorChar, cursorColor);

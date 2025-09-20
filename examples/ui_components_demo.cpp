@@ -60,13 +60,13 @@ public:
     
     void setupComponents() {
         // Progress Bars
-        progressBar = std::make_shared<ProgressBar>(mainWindow, 2, 2, 35, 1);
+        progressBar = std::make_shared<ProgressBar>(mainWindow, 2, 2, 35, 1); // Back to original size
         progressBar->setRange(0, 100);
         progressBar->setValue(25);
         progressBar->setColors(Color::GREEN + Color::BG_BLACK, Color::CYAN + Color::BG_BLACK);
         progressBar->setShowPercentage(true);
         
-        animatedProgress = std::make_shared<ProgressBar>(mainWindow, 2, 4, 35, 1);
+        animatedProgress = std::make_shared<ProgressBar>(mainWindow, 2, 4, 35, 1); // Back to original size
         animatedProgress->setRange(0, 100);
         animatedProgress->setValue(60);
         animatedProgress->setAnimated(true);

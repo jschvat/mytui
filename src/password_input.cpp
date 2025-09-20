@@ -1,5 +1,6 @@
 #include "../include/password_input.h"
 #include "../include/window.h"
+#include "../include/component_clipping.h"
 #include <algorithm>
 #include <cctype>
 
@@ -107,10 +108,14 @@ int PasswordInput::getPasswordScore() const {
 void PasswordInput::draw(UnicodeBuffer& buffer) {
     if (!isVisible() || !parentWindow || !parentWindow->isVisible()) return;
     
-    // Draw the base text input
+    // Draw the base text input (this now includes clipping)
     TextInput::draw(buffer);
     
     if (!parentWindow) return;
+    
+    // Calculate clipping bounds for additional elements
+    auto clipBounds = ComponentClipping::calculateClipBounds(parentWindow, getX(), getY(), getWidth(), getHeight());
+    if (clipBounds.isEmpty) return;
     
     int absX = parentWindow->x + getX();
     int absY = parentWindow->y + getY();
@@ -129,12 +134,15 @@ void PasswordInput::draw(UnicodeBuffer& buffer) {
             strengthX = absX;
             strengthY = absY + 1;
             
-            // Only draw if we have vertical space
-            if (getHeight() > 1) {
-                buffer.drawString(strengthX, strengthY, strengthText, strengthColor);
+            // Only draw if we have vertical space and it's within clip bounds
+            if (getHeight() > 1 && ComponentClipping::shouldDraw(clipBounds, strengthX, strengthY)) {
+                buffer.drawStringClipped(strengthX, strengthY, strengthText, strengthColor, clipBounds.endX);
             }
         } else {
-            buffer.drawString(strengthX, strengthY, strengthText, strengthColor);
+            // Only draw if it's within clip bounds
+            if (ComponentClipping::shouldDraw(clipBounds, strengthX, strengthY)) {
+                buffer.drawStringClipped(strengthX, strengthY, strengthText, strengthColor, clipBounds.endX);
+            }
         }
     }
     
@@ -144,7 +152,10 @@ void PasswordInput::draw(UnicodeBuffer& buffer) {
         int hintX = absX + getWidth() - (int)hint.length() - 1;
         int hintY = absY;
         
-        buffer.drawString(hintX, hintY, hint, Color::CYAN + Color::BG_BLACK);
+        // Only draw if it's within clip bounds
+        if (ComponentClipping::shouldDraw(clipBounds, hintX, hintY)) {
+            buffer.drawStringClipped(hintX, hintY, hint, Color::CYAN + Color::BG_BLACK, clipBounds.endX);
+        }
     }
     
     // Draw caps lock warning if enabled and detected
@@ -163,7 +174,13 @@ void PasswordInput::draw(UnicodeBuffer& buffer) {
         
         if (mightBeCapsLock) {
             std::string warning = "CAPS";
-            buffer.drawString(absX - 5, absY, warning, Color::BRIGHT_YELLOW + Color::BG_RED);
+            int warningX = absX - 5;
+            int warningY = absY;
+            
+            // Only draw if it's within clip bounds
+            if (ComponentClipping::shouldDraw(clipBounds, warningX, warningY)) {
+                buffer.drawStringClipped(warningX, warningY, warning, Color::BRIGHT_YELLOW + Color::BG_RED, clipBounds.endX);
+            }
         }
     }
 }

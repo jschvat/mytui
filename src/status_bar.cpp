@@ -1,6 +1,7 @@
 #include "../include/status_bar.h"
 #include "../include/window.h"
 #include "../include/buffer.h"
+#include "../include/component_clipping.h"
 #include <algorithm>
 #include <chrono>
 #include <iomanip>
@@ -284,10 +285,30 @@ void StatusBar::draw(UnicodeBuffer& buffer) {
     int absX = parentWindow->x + x;
     int absY = parentWindow->y + y;
     
-    // Fill background
+    // Calculate window content boundaries (same as ProgressBar)
+    int windowContentX = parentWindow->getContentX();
+    int windowContentY = parentWindow->getContentY();
+    int windowContentWidth = parentWindow->getContentWidth();
+    int windowContentHeight = parentWindow->getContentHeight();
+    
+    // Clip component to window content area
+    int clipStartX = std::max(absX, windowContentX);
+    int clipStartY = std::max(absY, windowContentY);
+    int clipEndX = std::min(absX + width, windowContentX + windowContentWidth);
+    int clipEndY = std::min(absY + height, windowContentY + windowContentHeight);
+    
+    // Don't draw if completely outside window
+    if (clipStartX >= clipEndX || clipStartY >= clipEndY) return;
+    
+    // Fill background with clipping
     for (int row = 0; row < height; row++) {
+        int drawY = absY + row;
+        if (drawY < clipStartY || drawY >= clipEndY) continue;
+        
         for (int col = 0; col < width; col++) {
-            buffer.setCell(absX + col, absY + row, " ", backgroundColor);
+            int drawX = absX + col;
+            if (drawX < clipStartX || drawX >= clipEndX) continue;
+            buffer.setCell(drawX, drawY, " ", backgroundColor);
         }
     }
     
@@ -330,12 +351,14 @@ void StatusBar::draw(UnicodeBuffer& buffer) {
             segmentX += padding;
         }
         
-        buffer.drawStringClipped(segmentX, absY, displayText, textColor, absX + width);
+        // Use the clip boundary for text
+        int textClipEnd = std::min(absX + width, clipEndX);
+        buffer.drawStringClipped(segmentX, absY, displayText, textColor, textClipEnd);
         
-        // Draw separator
+        // Draw separator with clipping
         if (showSeparators && i < (int)segments.size() - 1) {
             int separatorX = absX + segmentEnd;
-            if (separatorX < absX + width) {
+            if (separatorX >= clipStartX && separatorX < clipEndX && absY >= clipStartY && absY < clipEndY) {
                 buffer.setCell(separatorX, absY, separatorChar, separatorColor);
             }
         }

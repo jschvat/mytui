@@ -1,5 +1,6 @@
 #include "../include/checkbox.h"
 #include "../include/window.h"
+#include "../include/component_clipping.h"
 #include <algorithm>
 
 // CheckboxEvent implementation
@@ -126,15 +127,39 @@ void Checkbox::draw(UnicodeBuffer& buffer) {
         currentLabelColor = activeColor;
     }
     
-    // Draw checkbox box
-    buffer.setCell(absX, absY, "[", currentBoxColor);
-    buffer.setCell(absX + 1, absY, checked ? checkedChar : uncheckedChar, currentBoxColor);
-    buffer.setCell(absX + 2, absY, "]", currentBoxColor);
-    buffer.setCell(absX + 3, absY, " ", currentLabelColor);
+    // Calculate clipping bounds
+    auto clipBounds = ComponentClipping::calculateClipBounds(parentWindow, x, y, width, height);
+    if (clipBounds.isEmpty) return;
     
-    // Draw label
+    // Draw checkbox box with clipping
+    if (ComponentClipping::shouldDraw(clipBounds, absX, absY)) {
+        buffer.setCell(absX, absY, "[", currentBoxColor);
+    }
+    if (ComponentClipping::shouldDraw(clipBounds, absX + 1, absY)) {
+        buffer.setCell(absX + 1, absY, checked ? checkedChar : uncheckedChar, currentBoxColor);
+    }
+    if (ComponentClipping::shouldDraw(clipBounds, absX + 2, absY)) {
+        buffer.setCell(absX + 2, absY, "]", currentBoxColor);
+    }
+    if (ComponentClipping::shouldDraw(clipBounds, absX + 3, absY)) {
+        buffer.setCell(absX + 3, absY, " ", currentLabelColor);
+    }
+    
+    // Draw label with clipping
     if (!label.empty()) {
-        buffer.drawStringClipped(absX + 4, absY, label, currentLabelColor, absX + width);
+        int labelStartX = std::max(absX + 4, clipBounds.startX);
+        int labelEndX = std::min(absX + width, clipBounds.endX);
+        
+        if (labelStartX < labelEndX && absY >= clipBounds.startY && absY < clipBounds.endY) {
+            // Calculate which part of the label to show
+            int labelOffset = labelStartX - (absX + 4);
+            int labelLength = labelEndX - labelStartX;
+            
+            if (labelOffset >= 0 && labelOffset < (int)label.length()) {
+                std::string clippedLabel = label.substr(labelOffset, labelLength);
+                buffer.drawStringClipped(labelStartX, absY, clippedLabel, currentLabelColor, labelEndX);
+            }
+        }
     }
 }
 

@@ -1,5 +1,6 @@
 #include "../include/list_box.h"
 #include "../include/window.h"
+#include "../include/component_clipping.h"
 #include <algorithm>
 
 // ListBoxEvent implementation
@@ -211,13 +212,80 @@ void ListBox::draw(UnicodeBuffer& buffer) {
     int absX = parentWindow->x + x;
     int absY = parentWindow->y + y;
     
-    // Draw border
-    buffer.drawBox(absX, absY, width, height, borderColor, true, false);
+    // Calculate window content boundaries (same as ProgressBar)
+    int windowContentX = parentWindow->getContentX();
+    int windowContentY = parentWindow->getContentY();
+    int windowContentWidth = parentWindow->getContentWidth();
+    int windowContentHeight = parentWindow->getContentHeight();
     
-    // Fill background
+    // Clip component to window content area
+    int clipStartX = std::max(absX, windowContentX);
+    int clipStartY = std::max(absY, windowContentY);
+    int clipEndX = std::min(absX + width, windowContentX + windowContentWidth);
+    int clipEndY = std::min(absY + height, windowContentY + windowContentHeight);
+    
+    // Don't draw if completely outside window
+    if (clipStartX >= clipEndX || clipStartY >= clipEndY) return;
+    
+    // Draw border with manual clipping (drawBox doesn't respect clip bounds)
+    // Top border
+    if (absY >= clipStartY && absY < clipEndY) {
+        for (int col = 0; col < width; col++) {
+            int drawX = absX + col;
+            if (drawX < clipStartX || drawX >= clipEndX) continue;
+            
+            std::string borderChar;
+            if (col == 0) borderChar = "┌";
+            else if (col == width - 1) borderChar = "┐";
+            else borderChar = "─";
+            
+            buffer.setCell(drawX, absY, borderChar, borderColor);
+        }
+    }
+    
+    // Bottom border
+    int bottomY = absY + height - 1;
+    if (bottomY >= clipStartY && bottomY < clipEndY) {
+        for (int col = 0; col < width; col++) {
+            int drawX = absX + col;
+            if (drawX < clipStartX || drawX >= clipEndX) continue;
+            
+            std::string borderChar;
+            if (col == 0) borderChar = "└";
+            else if (col == width - 1) borderChar = "┘";
+            else borderChar = "─";
+            
+            buffer.setCell(drawX, bottomY, borderChar, borderColor);
+        }
+    }
+    
+    // Left and right borders
     for (int row = 1; row < height - 1; row++) {
+        int drawY = absY + row;
+        if (drawY < clipStartY || drawY >= clipEndY) continue;
+        
+        // Left border
+        int leftX = absX;
+        if (leftX >= clipStartX && leftX < clipEndX) {
+            buffer.setCell(leftX, drawY, "│", borderColor);
+        }
+        
+        // Right border
+        int rightX = absX + width - 1;
+        if (rightX >= clipStartX && rightX < clipEndX) {
+            buffer.setCell(rightX, drawY, "│", borderColor);
+        }
+    }
+    
+    // Fill background with clipping
+    for (int row = 1; row < height - 1; row++) {
+        int drawY = absY + row;
+        if (drawY < clipStartY || drawY >= clipEndY) continue;
+        
         for (int col = 1; col < width - 1; col++) {
-            buffer.setCell(absX + col, absY + row, " ", backgroundColor);
+            int drawX = absX + col;
+            if (drawX < clipStartX || drawX >= clipEndX) continue;
+            buffer.setCell(drawX, drawY, " ", backgroundColor);
         }
     }
     
@@ -229,10 +297,15 @@ void ListBox::draw(UnicodeBuffer& buffer) {
         
         int itemY = absY + 1 + i;
         
+        // Skip items that are outside the clip area
+        if (itemY < clipStartY || itemY >= clipEndY) continue;
+        
         if (item.separator) {
-            // Draw separator
+            // Draw separator with clipping
             for (int col = 1; col < width - 1; col++) {
-                buffer.setCell(absX + col, itemY, "─", separatorColor);
+                int drawX = absX + col;
+                if (drawX < clipStartX || drawX >= clipEndX) continue;
+                buffer.setCell(drawX, itemY, "─", separatorColor);
             }
         } else {
             // Determine item color
@@ -246,34 +319,48 @@ void ListBox::draw(UnicodeBuffer& buffer) {
                 itemColor = selectedColor;
             }
             
-            // Draw selection indicator for multi-select
+            // Draw selection indicator for multi-select with clipping
             if (multiSelect) {
                 std::string indicator = isItemSelected(itemIndex) ? "✓" : " ";
-                buffer.setCell(absX + 1, itemY, indicator, itemColor);
-                buffer.drawStringClipped(absX + 3, itemY, item.text, itemColor, absX + width - 1);
+                int indicatorX = absX + 1;
+                if (indicatorX >= clipStartX && indicatorX < clipEndX) {
+                    buffer.setCell(indicatorX, itemY, indicator, itemColor);
+                }
+                int textClipEnd = std::min(absX + width - 1, clipEndX);
+                buffer.drawStringClipped(absX + 3, itemY, item.text, itemColor, textClipEnd);
             } else {
-                buffer.drawStringClipped(absX + 2, itemY, item.text, itemColor, absX + width - 1);
+                int textClipEnd = std::min(absX + width - 1, clipEndX);
+                buffer.drawStringClipped(absX + 2, itemY, item.text, itemColor, textClipEnd);
             }
         }
     }
     
-    // Draw scrollbar if needed
+    // Draw scrollbar if needed with clipping
     if (showScrollbar && (int)items.size() > visibleCount) {
         int scrollbarX = absX + width - 2;
         int scrollbarHeight = height - 2;
         
-        // Draw scrollbar track
-        for (int i = 0; i < scrollbarHeight; i++) {
-            buffer.setCell(scrollbarX, absY + 1 + i, "│", scrollbarColor);
-        }
-        
-        // Draw scroll thumb
-        if (scrollbarHeight > 0 && !items.empty()) {
-            int thumbSize = std::max(1, (visibleCount * scrollbarHeight) / (int)items.size());
-            int thumbPos = (scrollOffset * (scrollbarHeight - thumbSize)) / std::max(1, (int)items.size() - visibleCount);
+        // Only draw scrollbar if it's within clip bounds
+        if (scrollbarX >= clipStartX && scrollbarX < clipEndX) {
+            // Draw scrollbar track
+            for (int i = 0; i < scrollbarHeight; i++) {
+                int drawY = absY + 1 + i;
+                if (drawY >= clipStartY && drawY < clipEndY) {
+                    buffer.setCell(scrollbarX, drawY, "│", scrollbarColor);
+                }
+            }
             
-            for (int i = 0; i < thumbSize; i++) {
-                buffer.setCell(scrollbarX, absY + 1 + thumbPos + i, "█", scrollThumbColor);
+            // Draw scroll thumb
+            if (scrollbarHeight > 0 && !items.empty()) {
+                int thumbSize = std::max(1, (visibleCount * scrollbarHeight) / (int)items.size());
+                int thumbPos = (scrollOffset * (scrollbarHeight - thumbSize)) / std::max(1, (int)items.size() - visibleCount);
+                
+                for (int i = 0; i < thumbSize; i++) {
+                    int drawY = absY + 1 + thumbPos + i;
+                    if (drawY >= clipStartY && drawY < clipEndY) {
+                        buffer.setCell(scrollbarX, drawY, "█", scrollThumbColor);
+                    }
+                }
             }
         }
     }

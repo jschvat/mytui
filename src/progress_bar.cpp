@@ -140,13 +140,36 @@ void ProgressBar::draw(UnicodeBuffer& buffer) {
     int absX = parentWindow->x + x;
     int absY = parentWindow->y + y;
     
+    // Calculate window content boundaries (inside borders, accounting for scrollbars)
+    int windowContentX = parentWindow->getContentX();
+    int windowContentY = parentWindow->getContentY();
+    int windowContentWidth = parentWindow->getContentWidth();
+    int windowContentHeight = parentWindow->getContentHeight();
+    
+    // Clip progress bar to window content area
+    int clipStartX = std::max(absX, windowContentX);
+    int clipStartY = std::max(absY, windowContentY);
+    int clipEndX = std::min(absX + width, windowContentX + windowContentWidth);
+    int clipEndY = std::min(absY + height, windowContentY + windowContentHeight);
+    
+    
+    // Don't draw if completely outside window
+    if (clipStartX >= clipEndX || clipStartY >= clipEndY) return;
+    
+    
     // Calculate progress
     double progress = getPercentage() / 100.0;
     int filledChars = (int)(progress * width);
     
-    // Draw progress bar
+    // Draw progress bar with clipping
     for (int row = 0; row < height; row++) {
+        int drawY = absY + row;
+        if (drawY < clipStartY || drawY >= clipEndY) continue;
+        
         for (int col = 0; col < width; col++) {
+            int drawX = absX + col;
+            if (drawX < clipStartX || drawX >= clipEndX) continue;
+            
             std::string cellChar;
             std::string cellColor;
             
@@ -168,11 +191,11 @@ void ProgressBar::draw(UnicodeBuffer& buffer) {
                 cellColor = emptyColor;
             }
             
-            buffer.setCell(absX + col, absY + row, cellChar, cellColor);
+            buffer.setCell(drawX, drawY, cellChar, cellColor);
         }
     }
     
-    // Draw text overlay if enabled
+    // Draw text overlay if enabled and within window bounds
     if (height > 0 && (showPercentage || showValue || !customText.empty())) {
         std::string displayText;
         
@@ -193,19 +216,44 @@ void ProgressBar::draw(UnicodeBuffer& buffer) {
             displayText = oss.str();
         }
         
-        // Center the text
+        // Center the text but clip to window boundaries
         int textX = absX + (width - (int)displayText.length()) / 2;
         int textY = absY + height / 2;
         
-        if (textX >= absX && textX + (int)displayText.length() <= absX + width) {
-            buffer.drawStringClipped(textX, textY, displayText, textColor, absX + width);
+        // Only draw text if it's within the window content area
+        if (textY >= clipStartY && textY < clipEndY) {
+            // Clip text X coordinate to window bounds
+            int textStartX = std::max(textX, clipStartX);
+            int textEndX = std::min(textX + (int)displayText.length(), clipEndX);
+            
+            if (textStartX < textEndX) {
+                // Calculate which part of the text to display
+                int textOffset = textStartX - textX;
+                int textLength = textEndX - textStartX;
+                
+                if (textOffset >= 0 && textOffset < (int)displayText.length()) {
+                    std::string clippedText = displayText.substr(textOffset, textLength);
+                    buffer.drawStringClipped(textStartX, textY, clippedText, textColor, textEndX);
+                }
+            }
         }
     }
     
-    // Draw border if specified
+    // Draw border if specified and within window bounds
     if (borderStyle == "single" && height > 1) {
-        // Simple border for multi-line progress bars
-        buffer.drawBox(absX - 1, absY - 1, width + 2, height + 2, borderColor, true, false);
+        int borderX = absX - 1;
+        int borderY = absY - 1;
+        int borderW = width + 2;
+        int borderH = height + 2;
+        
+        // Only draw border if it would be within or overlap the window content area
+        if (borderX < windowContentX + windowContentWidth && 
+            borderY < windowContentY + windowContentHeight &&
+            borderX + borderW > windowContentX && 
+            borderY + borderH > windowContentY) {
+            
+            buffer.drawBox(borderX, borderY, borderW, borderH, borderColor, true, false);
+        }
     }
 }
 

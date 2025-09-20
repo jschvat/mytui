@@ -1,6 +1,7 @@
 #include "../include/radio_buttons.h"
 #include "../include/window.h"
 #include "../include/buffer.h"
+#include "../include/component_clipping.h"
 #include <algorithm>
 
 // RadioButtonEvent implementation
@@ -278,6 +279,10 @@ void RadioButtons::draw(UnicodeBuffer& buffer) {
     int absX = parentWindow->x + x;
     int absY = parentWindow->y + y;
     
+    // Calculate clipping bounds for the entire radio button group
+    auto clipBounds = ComponentClipping::calculateClipBounds(parentWindow, x, y, width, height);
+    if (clipBounds.isEmpty) return;
+    
     if (horizontal) {
         // Horizontal layout
         int currentX = absX;
@@ -285,6 +290,13 @@ void RadioButtons::draw(UnicodeBuffer& buffer) {
         for (int i = 0; i < (int)items.size(); i++) {
             const auto& item = items[i];
             
+            // Check if this radio button is completely outside the clip area
+            if (currentX >= clipBounds.endX) break;
+            if (currentX + 4 + UnicodeUtils::getDisplayWidth(item.text) < clipBounds.startX) {
+                currentX += 4 + UnicodeUtils::getDisplayWidth(item.text) + spacing;
+                continue;
+            }
+            
             // Determine colors
             std::string currentButtonColor = buttonColor;
             std::string currentLabelColor = labelColor;
@@ -300,14 +312,33 @@ void RadioButtons::draw(UnicodeBuffer& buffer) {
                 currentLabelColor = selectedColor;
             }
             
-            // Draw radio button
-            buffer.setCell(currentX, absY, "(", currentButtonColor);
-            buffer.setCell(currentX + 1, absY, (i == selectedIndex) ? selectedChar : unselectedChar, currentButtonColor);
-            buffer.setCell(currentX + 2, absY, ")", currentButtonColor);
-            buffer.setCell(currentX + 3, absY, " ", currentLabelColor);
+            // Draw radio button with clipping
+            if (ComponentClipping::shouldDraw(clipBounds, currentX, absY)) {
+                buffer.setCell(currentX, absY, "(", currentButtonColor);
+            }
+            if (ComponentClipping::shouldDraw(clipBounds, currentX + 1, absY)) {
+                buffer.setCell(currentX + 1, absY, (i == selectedIndex) ? selectedChar : unselectedChar, currentButtonColor);
+            }
+            if (ComponentClipping::shouldDraw(clipBounds, currentX + 2, absY)) {
+                buffer.setCell(currentX + 2, absY, ")", currentButtonColor);
+            }
+            if (ComponentClipping::shouldDraw(clipBounds, currentX + 3, absY)) {
+                buffer.setCell(currentX + 3, absY, " ", currentLabelColor);
+            }
             
-            // Draw label
-            buffer.drawStringClipped(currentX + 4, absY, item.text, currentLabelColor, currentX + 4 + UnicodeUtils::getDisplayWidth(item.text));
+            // Draw label with clipping
+            int labelStartX = std::max(currentX + 4, clipBounds.startX);
+            int labelEndX = std::min(currentX + 4 + UnicodeUtils::getDisplayWidth(item.text), clipBounds.endX);
+            
+            if (labelStartX < labelEndX && ComponentClipping::shouldDraw(clipBounds, labelStartX, absY)) {
+                int labelOffset = labelStartX - (currentX + 4);
+                int labelLength = labelEndX - labelStartX;
+                
+                if (labelOffset >= 0 && labelOffset < UnicodeUtils::getDisplayWidth(item.text)) {
+                    std::string clippedText = UnicodeUtils::substring(item.text, labelOffset, labelLength);
+                    buffer.drawStringClipped(labelStartX, absY, clippedText, currentLabelColor, labelEndX);
+                }
+            }
             
             currentX += 4 + UnicodeUtils::getDisplayWidth(item.text) + spacing;
         }
@@ -315,6 +346,11 @@ void RadioButtons::draw(UnicodeBuffer& buffer) {
         // Vertical layout
         for (int i = 0; i < (int)items.size(); i++) {
             const auto& item = items[i];
+            int currentY = absY + i;
+            
+            // Check if this radio button is completely outside the clip area
+            if (currentY >= clipBounds.endY) break;
+            if (currentY < clipBounds.startY) continue;
             
             // Determine colors
             std::string currentButtonColor = buttonColor;
@@ -331,14 +367,33 @@ void RadioButtons::draw(UnicodeBuffer& buffer) {
                 currentLabelColor = selectedColor;
             }
             
-            // Draw radio button
-            buffer.setCell(absX, absY + i, "(", currentButtonColor);
-            buffer.setCell(absX + 1, absY + i, (i == selectedIndex) ? selectedChar : unselectedChar, currentButtonColor);
-            buffer.setCell(absX + 2, absY + i, ")", currentButtonColor);
-            buffer.setCell(absX + 3, absY + i, " ", currentLabelColor);
+            // Draw radio button with clipping
+            if (ComponentClipping::shouldDraw(clipBounds, absX, currentY)) {
+                buffer.setCell(absX, currentY, "(", currentButtonColor);
+            }
+            if (ComponentClipping::shouldDraw(clipBounds, absX + 1, currentY)) {
+                buffer.setCell(absX + 1, currentY, (i == selectedIndex) ? selectedChar : unselectedChar, currentButtonColor);
+            }
+            if (ComponentClipping::shouldDraw(clipBounds, absX + 2, currentY)) {
+                buffer.setCell(absX + 2, currentY, ")", currentButtonColor);
+            }
+            if (ComponentClipping::shouldDraw(clipBounds, absX + 3, currentY)) {
+                buffer.setCell(absX + 3, currentY, " ", currentLabelColor);
+            }
             
-            // Draw label
-            buffer.drawStringClipped(absX + 4, absY + i, item.text, currentLabelColor, absX + width);
+            // Draw label with clipping
+            int labelStartX = std::max(absX + 4, clipBounds.startX);
+            int labelEndX = std::min(absX + width, clipBounds.endX);
+            
+            if (labelStartX < labelEndX && ComponentClipping::shouldDraw(clipBounds, labelStartX, currentY)) {
+                int labelOffset = labelStartX - (absX + 4);
+                int labelLength = labelEndX - labelStartX;
+                
+                if (labelOffset >= 0 && labelOffset < UnicodeUtils::getDisplayWidth(item.text)) {
+                    std::string clippedText = UnicodeUtils::substring(item.text, labelOffset, labelLength);
+                    buffer.drawStringClipped(labelStartX, currentY, clippedText, currentLabelColor, labelEndX);
+                }
+            }
         }
     }
 }
